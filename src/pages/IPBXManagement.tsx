@@ -357,7 +357,7 @@ const IPBXManagement = () => {
           <div className="flex-1 p-4 pt-2">
             {wsshIpbx && (
               <iframe
-                src={`http://${window.location.hostname}:8082?host=${wsshIpbx.ip_address || wsshIpbx.host}&user=${wsshIpbx.ssh_user || "root"}`}
+                src={`http://${window.location.hostname}:9061/ssh?ip=${wsshIpbx.ip_address || wsshIpbx.host}`}
                 className="w-full h-full rounded-lg border border-border bg-black"
                 title="WebSSH Terminal"
               />
