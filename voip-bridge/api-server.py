@@ -113,7 +113,7 @@ class Handler(BaseHTTPRequestHandler):
                     })
 
             logging.info(f"CDR {ip} ({date_from}→{date_to}): {len(calls)} enregistrements")
-            self.send_json(200, {"calls": calls, "total": len(calls), "date": date, "ip": ip})
+            self.send_json(200, {"calls": calls, "total": len(calls), "date_from": date_from, "date_to": date_to, "ip": ip})
 
         # -- Capture PCAP d'un appel
         elif parsed.path == "/api/pcap":
