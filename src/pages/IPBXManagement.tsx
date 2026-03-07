@@ -62,8 +62,7 @@ const IPBXManagement = () => {
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [configuring, setConfiguring] = useState(false);
-  const [wsshOpen, setWsshOpen] = useState(false);
-  const [wsshIpbx, setWsshIpbx] = useState<IPBX | null>(null);
+
 
   const fetchData = async () => {
     setLoading(true);
@@ -171,8 +170,9 @@ const IPBXManagement = () => {
   };
 
   const openWebSSH = (i: IPBX) => {
-    setWsshIpbx(i);
-    setWsshOpen(true);
+    const ip = i.ip_address || i.host;
+    const user = i.ssh_user || "root";
+    window.open(`http://${window.location.hostname}:9061/ssh?ip=${ip}&user=${user}`, "_blank");
   };
 
   const getStatusColor = (status: string) => {
@@ -346,25 +346,6 @@ const IPBXManagement = () => {
         </div>
       )}
 
-      {/* Modal WebSSH */}
-      <Dialog open={wsshOpen} onOpenChange={setWsshOpen}>
-        <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0">
-          <DialogHeader className="p-4 pb-0">
-            <DialogTitle className="flex items-center gap-2">
-              <Terminal size={16} /> WebSSH — {wsshIpbx?.name} ({wsshIpbx?.ip_address || wsshIpbx?.host})
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 p-4 pt-2">
-            {wsshIpbx && (
-              <iframe
-                src={`http://${window.location.hostname}:9061/ssh?ip=${wsshIpbx.ip_address || wsshIpbx.host}`}
-                className="w-full h-full rounded-lg border border-border bg-black"
-                title="WebSSH Terminal"
-              />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
