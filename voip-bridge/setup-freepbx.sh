@@ -1,13 +1,34 @@
 #!/bin/bash
-# Usage: ./setup-freepbx.sh IP AMI_USER AMI_PASSWORD SERVER_IP
+# Usage: ./setup-freepbx.sh IP AMI_USER AMI_PASSWORD SSH_USER SSH_PASSWORD SSH_SUDO_PASSWORD
 IP=$1
 AMI_USER=${2:-gvoip}
 AMI_PASSWORD=${3:-gvoip2024}
-SERVER_IP=${4:-$(ip route get 1 2>/dev/null | awk '{print $7; exit}')}
+SSH_USER=${4:-root}
+SSH_PASSWORD=${5:-}
+SSH_SUDO_PASSWORD=${6:-}
+SERVER_IP=$(ip route get 1 2>/dev/null | awk '{print $7; exit}')
 
-echo "Configuration de $IP..."
+echo "Configuration de $IP (user=$SSH_USER)..."
 
-ssh -o StrictHostKeyChecking=no root@$IP << SSHEOF
+# Construire la commande SSH avec sshpass si mot de passe fourni
+SSH_CMD="ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10"
+if [[ -n "$SSH_PASSWORD" ]]; then
+  export SSHPASS="$SSH_PASSWORD"
+  SSH_CMD="sshpass -e $SSH_CMD"
+fi
+
+# Wrapper pour exécuter en root (via su si non-root)
+run_as_root() {
+  local cmd="$1"
+  if [[ "$SSH_USER" == "root" ]]; then
+    $SSH_CMD root@$IP "$cmd"
+  else
+    local sudo_pass="${SSH_SUDO_PASSWORD:-$SSH_PASSWORD}"
+    $SSH_CMD ${SSH_USER}@$IP "echo '$sudo_pass' | su -c '$cmd'"
+  fi
+}
+
+$SSH_CMD ${SSH_USER}@$IP << SSHEOF
 # 1. Ajouter utilisateur AMI si pas existant
 if ! grep -q "\[$AMI_USER\]" /etc/asterisk/manager_additional.conf; then
 cat >> /etc/asterisk/manager_additional.conf << EOF
@@ -61,6 +82,9 @@ iptables-save > /etc/sysconfig/iptables 2>/dev/null
 
 echo "Configuration terminée !"
 SSHEOF
+
+# Installer sshpass si besoin
+command -v sshpass &>/dev/null || apt-get install -y -qq sshpass 2>/dev/null || yum install -y -q sshpass 2>/dev/null || true
 
 echo "Test de connexion AMI..."
 sleep 2

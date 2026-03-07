@@ -56,13 +56,17 @@ def get_token(base_url, client_id, client_secret):
 class AMIClient:
     DISPOSITION_PRIORITY = {"ANSWERED": 4, "BUSY": 3, "NO ANSWER": 2, "FAILED": 1}
 
-    def __init__(self, host, port, username, secret, ipbx_id, ipbx_name):
+    def __init__(self, host, port, username, secret, ipbx_id, ipbx_name,
+                 ssh_user="root", ssh_password="", ssh_sudo_password=""):
         self.host = host
         self.port = port
         self.username = username
         self.secret = secret
         self.ipbx_id = ipbx_id
         self.ipbx_name = ipbx_name
+        self.ssh_user = ssh_user or "root"
+        self.ssh_password = ssh_password or ""
+        self.ssh_sudo_password = ssh_sudo_password or ""
         self.sock = None
         self.active_calls = {}
         self.running = False
@@ -323,13 +327,38 @@ class AMIClient:
                         f"L extension {number} ({name}) est de nouveau enregistree sur {self.ipbx_name}.", self.ipbx_name)
         except Exception as e: logging.error(f"Sync Ext Error: {e}")
 
+    def _ssh_cmd(self, cmd):
+        """Construit la commande SSH adaptée selon l'utilisateur (root ou non-root via su)."""
+        ssh_opts = ['ssh', '-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=10',
+                    '-o', 'BatchMode=yes' if not self.ssh_password else 'BatchMode=no',
+                    f'{self.ssh_user}@{self.host}']
+        if self.ssh_user == "root":
+            return ssh_opts + [cmd]
+        else:
+            # Via su : echo PASSWORD | su -c "CMD"
+            sudo_pass = self.ssh_sudo_password or self.ssh_password
+            wrapped = f'echo {sudo_pass!r} | su -c {cmd!r}'
+            return ssh_opts + [wrapped]
+
+    def _ssh_run(self, cmd, timeout=15):
+        """Execute une commande SSH et retourne le résultat."""
+        import subprocess
+        full_cmd = self._ssh_cmd(cmd)
+        env = None
+        if self.ssh_password:
+            import os
+            env = os.environ.copy()
+            env['SSHPASS'] = self.ssh_password
+            full_cmd = ['sshpass', '-e'] + full_cmd
+        return subprocess.run(full_cmd, capture_output=True, text=True, timeout=timeout, env=env)
+
     def _sync_trunk_details(self):
         """Synchronise les details des trunks via SSH asterisk CLI."""
         import subprocess, re as _re
-        ssh_base = ['ssh', '-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=10', '-o', 'BatchMode=yes', f'root@{self.host}']
+        ssh_base = self._ssh_cmd("")[:- 1]  # base sans la commande
         try:
             # 1. Recuperer contacts (statut + RTT)
-            result = subprocess.run(ssh_base + ["asterisk -rx 'pjsip show contacts' 2>/dev/null"], capture_output=True, text=True, timeout=15)
+            result = self._ssh_run("asterisk -rx 'pjsip show contacts' 2>/dev/null", timeout=15)
             trunk_data = {}
             for line in result.stdout.split("\n"):
                 line = line.strip()
@@ -351,7 +380,7 @@ class AMIClient:
             # 2. Pour chaque trunk, recuperer IP via pjsip show aor
             for t_name in trunk_data:
                 try:
-                    aor_result = subprocess.run(ssh_base + [f"asterisk -rx 'pjsip show aor {t_name}' 2>/dev/null"], capture_output=True, text=True, timeout=5)
+                    aor_result = self._ssh_run(f"asterisk -rx 'pjsip show aor {t_name}' 2>/dev/null", timeout=5)
                     for aor_line in aor_result.stdout.split("\n"):
                         if "contact" in aor_line.lower() and "sip:" in aor_line:
                             m = _re.search(r'@([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)', aor_line)
@@ -384,7 +413,7 @@ class AMIClient:
 
             # 3. Canaux actifs par trunk via core show channels
             try:
-                ch_result = subprocess.run(ssh_base + ["asterisk -rx 'core show channels concise' 2>/dev/null"], capture_output=True, text=True, timeout=5)
+                ch_result = self._ssh_run("asterisk -rx 'core show channels concise' 2>/dev/null", timeout=5)
                 for ch_line in ch_result.stdout.split("\n"):
                     for t_name in trunk_data:
                         if t_name.upper() in ch_line.upper():
@@ -394,7 +423,7 @@ class AMIClient:
             # 4. Uptime IPBX
             uptime_pct = None
             try:
-                up_result = subprocess.run(ssh_base + ["asterisk -rx 'core show uptime' 2>/dev/null"], capture_output=True, text=True, timeout=5)
+                up_result = self._ssh_run("asterisk -rx 'core show uptime' 2>/dev/null", timeout=5)
                 for up_line in up_result.stdout.split("\n"):
                     if "System uptime" in up_line or "Last reload" in up_line:
                         logging.info(f"Uptime {self.ipbx_name}: {up_line.strip()}")
@@ -414,10 +443,8 @@ class AMIClient:
         try:
             import subprocess
             mysql_cmd = "mysql -u root asterisk -sN -e \"SELECT id, description FROM devices WHERE id REGEXP '^[0-9]+';\""
-            cmd = ['ssh', '-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=10', '-o', 'BatchMode=yes',
-                   f'root@{self.host}', mysql_cmd]
-            logging.info(f'SSH cmd: {cmd}')
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            logging.info(f'SSH cmd to {self.ssh_user}@{self.host}: {mysql_cmd}')
+            result = self._ssh_run(mysql_cmd, timeout=30)
             if result.returncode != 0 or not result.stdout.strip():
                 logging.warning(f"SSH MySQL {self.ipbx_name}: {result.stderr.strip()}")
                 return
@@ -525,7 +552,10 @@ def main():
                             username=ipbx.get("ami_user") or "admin",
                             secret=ipbx.get("ami_password") or "secret",
                             ipbx_id=iid,
-                            ipbx_name=ipbx["name"]
+                            ipbx_name=ipbx["name"],
+                            ssh_user=ipbx.get("ssh_user") or "root",
+                            ssh_password=ipbx.get("ssh_password") or "",
+                            ssh_sudo_password=ipbx.get("ssh_sudo_password") or ""
                         )
                         t = threading.Thread(target=ami.run, daemon=True)
                         t.start()
