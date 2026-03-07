@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
-import socket, struct, logging, threading, time
+import socket, struct, logging, threading, time, sys, os
 from supabase import create_client
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
-env = dict(l.strip().split('=',1) for l in open('/opt/supabase/docker/.env') if '=' in l and not l.startswith('#'))
-supabase = create_client("http://192.168.1.157:8000", env.get('SERVICE_ROLE_KEY',''))
+# Charger config depuis config.py (généré par install.sh)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from config import SUPABASE_URL, SUPABASE_SERVICE_KEY
+except ImportError:
+    logging.error("config.py introuvable - lancer install.sh ou créer config.py manuellement")
+    sys.exit(1)
+
+supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 def parse_hep3(data):
     if data[:4] != b'HEP3':
         return None
-    total_len = struct.unpack('!H', data[4:6])[0]
     pos = 6
     result = {}
     while pos + 6 <= len(data):
@@ -21,10 +27,8 @@ def parse_hep3(data):
             break
         cdata = data[pos+6:pos+clen]
         pos += clen
-
-        # HEPv3 chunk types (vendor=0x0000)
-        if   ctype == 0x0001: result['ip_family'] = cdata[0] if cdata else 2      # AF: 2=IPv4
-        elif ctype == 0x0002: result['ip_proto']  = cdata[0] if cdata else 17     # proto: 17=UDP
+        if   ctype == 0x0001: result['ip_family'] = cdata[0] if cdata else 2
+        elif ctype == 0x0002: result['ip_proto']  = cdata[0] if cdata else 17
         elif ctype == 0x0003 and len(cdata)==4:  result['src_ip']  = socket.inet_ntoa(cdata)
         elif ctype == 0x0004 and len(cdata)==4:  result['dst_ip']  = socket.inet_ntoa(cdata)
         elif ctype == 0x0005 and len(cdata)==16: result['src_ip']  = socket.inet_ntop(socket.AF_INET6, cdata)
@@ -33,12 +37,11 @@ def parse_hep3(data):
         elif ctype == 0x0008 and len(cdata)==2:  result['dst_port']= struct.unpack('!H', cdata)[0]
         elif ctype == 0x0009 and len(cdata)==4:  result['ts_sec']  = struct.unpack('!I', cdata)[0]
         elif ctype == 0x000a and len(cdata)==4:  result['ts_usec'] = struct.unpack('!I', cdata)[0]
-        elif ctype == 0x000b: result['proto_type'] = cdata[0] if cdata else 0     # 1=SIP
+        elif ctype == 0x000b: result['proto_type'] = cdata[0] if cdata else 0
         elif ctype == 0x000c and len(cdata)==4:  result['capture_id'] = struct.unpack('!I', cdata)[0]
         elif ctype == 0x000e: result['auth_key'] = cdata.decode('utf-8', errors='ignore')
         elif ctype == 0x000f: result['payload']  = cdata.decode('utf-8', errors='ignore')
         elif ctype == 0x0011: result['call_id']  = cdata.decode('utf-8', errors='ignore')
-
     return result
 
 def extract_sip_method(payload):
@@ -51,8 +54,7 @@ def extract_sip_method(payload):
         reason = parts[2] if len(parts) > 2 else ''
         return f"{code} {reason}".strip(), 'response'
     else:
-        method = first.split(' ')[0]
-        return method, 'request'
+        return first.split(' ')[0], 'request'
 
 def extract_call_id(payload):
     for line in (payload or '').split('\r\n'):
@@ -65,36 +67,26 @@ def handle_packet(data, addr):
         hep = parse_hep3(data)
         if not hep or 'payload' not in hep:
             return
-
         payload = hep.get('payload', '')
         method, sip_type = extract_sip_method(payload)
         call_id = hep.get('call_id') or extract_call_id(payload)
-
         if not call_id or not method:
             return
-
-        # Filtrer keepalive
         if method in ['OPTIONS', 'REGISTER']:
             return
-
-        code = ''
-        if sip_type == 'response':
-            code = method.split(' ')[0]
-
+        code = method.split(' ')[0] if sip_type == 'response' else ''
         logging.info(f"SIP {method} | {hep.get('src_ip','?')}:{hep.get('src_port','?')} -> {hep.get('dst_ip','?')}:{hep.get('dst_port','?')} | {call_id[:30]}")
-
         supabase.table("sip_flows").insert({
-            "call_id": call_id,
-            "src_ip": hep.get('src_ip', ''),
-            "dst_ip": hep.get('dst_ip', ''),
+            "call_id":  call_id,
+            "src_ip":   hep.get('src_ip', ''),
+            "dst_ip":   hep.get('dst_ip', ''),
             "src_port": hep.get('src_port', 0),
             "dst_port": hep.get('dst_port', 0),
-            "method": method,
+            "method":   method,
             "sip_type": sip_type,
             "sip_code": code,
-            "payload": payload[:2000],
+            "payload":  payload[:2000],
         }).execute()
-
     except Exception as e:
         logging.error(f"Erreur: {e}")
 
