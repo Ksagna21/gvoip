@@ -32,20 +32,21 @@ interface Call {
   ipbx?: { name: string };
 }
 
+// CDR vient directement du FreePBX via /api/cdr
 interface CDR {
-  id: string;
-  uniqueid: string;
-  caller: string;
-  caller_name: string | null;
-  callee: string;
-  callee_name: string | null;
   calldate: string;
+  src: string;
+  dst: string;
+  context: string;
   duration: number;
   billsec: number;
   disposition: string;
-  codec: string | null;
-  ipbx_id: string;
-  ipbx?: { name: string };
+  channel: string;
+  dstchannel: string;
+  uniqueid: string;
+  ipbx_name?: string;
+  ipbx_ip?: string;
+  ipbx_id?: string;
 }
 
 interface SipFlow {
@@ -62,7 +63,7 @@ interface SipFlow {
   created_at: string;
 }
 
-interface IPBX { id: string; name: string; }
+interface IPBX { id: string; name: string; ip_address?: string; host?: string; ssh_user?: string; ssh_password?: string; }
 
 const formatDuration = (started_at: string) => {
   const seconds = Math.floor((Date.now() - new Date(started_at).getTime()) / 1000);
@@ -119,7 +120,6 @@ const getDispositionColor = (d: string) => {
   }
 };
 
-// ── Couleurs méthodes SIP ─────────────────────────────────────────────────────
 const getSipColor = (method: string) => {
   if (method.startsWith("2")) return "#22c55e";
   if (method.startsWith("1")) return "#94a3b8";
@@ -131,7 +131,6 @@ const getSipColor = (method: string) => {
   return "#94a3b8";
 };
 
-// ── Diagramme SIP Ladder ──────────────────────────────────────────────────────
 const SipLadderDiagram = ({ uniqueid, calldate }: { uniqueid: string; calldate: string }) => {
   const [flows, setFlows] = useState<SipFlow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,59 +139,30 @@ const SipLadderDiagram = ({ uniqueid, calldate }: { uniqueid: string; calldate: 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-
-      // Chercher par call_id exact
-      let { data } = await supabase
-        .from("sip_flows")
-        .select("*")
-        .eq("call_id", uniqueid)
-        .order("created_at", { ascending: true });
-
-      // Fallback: fenêtre de temps ±2min autour de l'appel
+      let { data } = await supabase.from("sip_flows").select("*").eq("call_id", uniqueid).order("created_at", { ascending: true });
       if (!data || data.length === 0) {
         const t = new Date(calldate);
         const from = new Date(t.getTime() - 5000).toISOString();
         const to = new Date(t.getTime() + 180000).toISOString();
-        const res = await supabase
-          .from("sip_flows")
-          .select("*")
-          .gte("created_at", from)
-          .lte("created_at", to)
-          .order("created_at", { ascending: true })
-          .limit(100);
+        const res = await supabase.from("sip_flows").select("*").gte("created_at", from).lte("created_at", to).order("created_at", { ascending: true }).limit(100);
         data = res.data;
       }
-
       setFlows(data || []);
       setLoading(false);
     };
     load();
   }, [uniqueid, calldate]);
 
-  if (loading) return (
-    <div className="flex items-center justify-center py-6 text-muted-foreground gap-2 text-xs">
-      <Loader2 size={14} className="animate-spin" /> Chargement trace SIP...
-    </div>
-  );
+  if (loading) return <div className="flex items-center justify-center py-6 text-muted-foreground gap-2 text-xs"><Loader2 size={14} className="animate-spin" /> Chargement trace SIP...</div>;
+  if (!flows.length) return <div className="flex items-center justify-center py-6 text-muted-foreground gap-2 text-xs"><Network size={14} /> Aucune trace SIP disponible pour cet appel</div>;
 
-  if (!flows.length) return (
-    <div className="flex items-center justify-center py-6 text-muted-foreground gap-2 text-xs">
-      <Network size={14} /> Aucune trace SIP disponible pour cet appel
-    </div>
-  );
-
-  // Endpoints uniques dans l'ordre d'apparition
   const endpointMap = new Map<string, number>();
   flows.forEach(f => {
     if (!endpointMap.has(f.src_ip)) endpointMap.set(f.src_ip, endpointMap.size);
     if (!endpointMap.has(f.dst_ip)) endpointMap.set(f.dst_ip, endpointMap.size);
   });
   const endpoints = Array.from(endpointMap.keys());
-
-  const COL_WIDTH = 180;
-  const ROW_HEIGHT = 38;
-  const HEADER_H = 56;
-  const LEFT_PAD = 52;
+  const COL_WIDTH = 180, ROW_HEIGHT = 38, HEADER_H = 56, LEFT_PAD = 52;
   const totalW = endpoints.length * COL_WIDTH + LEFT_PAD + 20;
   const totalH = flows.length * ROW_HEIGHT + HEADER_H + 20;
   const getX = (ip: string) => LEFT_PAD + (endpointMap.get(ip) ?? 0) * COL_WIDTH + COL_WIDTH / 2;
@@ -202,87 +172,40 @@ const SipLadderDiagram = ({ uniqueid, calldate }: { uniqueid: string; calldate: 
   return (
     <div className="space-y-2">
       <div className="overflow-x-auto rounded-lg border border-border bg-[#0a0f1a]">
-        <svg width={Math.max(totalW, 400)} height={totalH} style={{ fontFamily: "'JetBrains Mono', monospace, monospace", display: "block" }}>
-
-          {/* Headers endpoints */}
+        <svg width={Math.max(totalW, 400)} height={totalH} style={{ fontFamily: "'JetBrains Mono', monospace", display: "block" }}>
           {endpoints.map((ep) => {
             const x = getX(ep);
             return (
               <g key={ep}>
-                <rect x={x - 72} y={6} width={144} height={38} rx={5}
-                  fill="#111827" stroke="#1e293b" strokeWidth={1} />
-                <text x={x} y={21} textAnchor="middle" fill="#64748b" fontSize={8} fontWeight="600">
-                  ENDPOINT
-                </text>
-                <text x={x} y={35} textAnchor="middle" fill="#94a3b8" fontSize={10} fontWeight="700">
-                  {ep}
-                </text>
-                {/* Ligne verticale */}
-                <line x1={x} y1={HEADER_H} x2={x} y2={totalH - 10}
-                  stroke="#1e293b" strokeWidth={1} strokeDasharray="3,4" />
+                <rect x={x - 72} y={6} width={144} height={38} rx={5} fill="#111827" stroke="#1e293b" strokeWidth={1} />
+                <text x={x} y={21} textAnchor="middle" fill="#64748b" fontSize={8} fontWeight="600">ENDPOINT</text>
+                <text x={x} y={35} textAnchor="middle" fill="#94a3b8" fontSize={10} fontWeight="700">{ep}</text>
+                <line x1={x} y1={HEADER_H} x2={x} y2={totalH - 10} stroke="#1e293b" strokeWidth={1} strokeDasharray="3,4" />
               </g>
             );
           })}
-
-          {/* Messages SIP */}
           {flows.map((flow, i) => {
-            const x1 = getX(flow.src_ip);
-            const x2 = getX(flow.dst_ip);
-            const y = getY(i);
+            const x1 = getX(flow.src_ip), x2 = getX(flow.dst_ip), y = getY(i);
             const color = getSipColor(flow.method);
-            const goRight = x2 >= x1;
-            const isSelf = x1 === x2;
-            const midX = (x1 + x2) / 2;
+            const goRight = x2 >= x1, isSelf = x1 === x2, midX = (x1 + x2) / 2;
             const ts = ((new Date(flow.created_at).getTime() - t0) / 1000).toFixed(3);
             const isSelected = selected?.id === flow.id;
-
             return (
-              <g key={flow.id}
-                onClick={() => setSelected(isSelected ? null : flow)}
-                style={{ cursor: "pointer" }}>
-
-                {/* Highlight ligne */}
-                <rect x={0} y={y - 17} width={Math.max(totalW, 400)} height={34}
-                  fill={isSelected ? "rgba(59,130,246,0.08)" : "transparent"}
-                  className="hover:fill-white/[0.03] transition-all"
-                />
-
-                {/* Timestamp */}
-                <text x={LEFT_PAD - 6} y={y + 4} textAnchor="end"
-                  fill="#334155" fontSize={8}>{ts}s</text>
-
+              <g key={flow.id} onClick={() => setSelected(isSelected ? null : flow)} style={{ cursor: "pointer" }}>
+                <rect x={0} y={y - 17} width={Math.max(totalW, 400)} height={34} fill={isSelected ? "rgba(59,130,246,0.08)" : "transparent"} className="hover:fill-white/[0.03] transition-all" />
+                <text x={LEFT_PAD - 6} y={y + 4} textAnchor="end" fill="#334155" fontSize={8}>{ts}s</text>
                 {isSelf ? (
-                  // Auto-message (loop)
-                  <path d={`M ${x1} ${y - 8} Q ${x1 + 30} ${y - 8} ${x1 + 30} ${y} Q ${x1 + 30} ${y + 8} ${x1} ${y + 8}`}
-                    fill="none" stroke={color} strokeWidth={1.5} />
+                  <path d={`M ${x1} ${y - 8} Q ${x1 + 30} ${y - 8} ${x1 + 30} ${y} Q ${x1 + 30} ${y + 8} ${x1} ${y + 8}`} fill="none" stroke={color} strokeWidth={1.5} />
                 ) : (
                   <>
-                    {/* Ligne principale */}
-                    <line
-                      x1={goRight ? x1 + 5 : x1 - 5} y1={y}
-                      x2={goRight ? x2 - 8 : x2 + 8} y2={y}
-                      stroke={color} strokeWidth={1.5}
-                      strokeOpacity={isSelected ? 1 : 0.85}
-                    />
-                    {/* Flèche */}
-                    <polygon
-                      points={goRight
-                        ? `${x2 - 2},${y - 5} ${x2 + 4},${y} ${x2 - 2},${y + 5}`
-                        : `${x2 + 2},${y - 5} ${x2 - 4},${y} ${x2 + 2},${y + 5}`}
-                      fill={color} />
+                    <line x1={goRight ? x1 + 5 : x1 - 5} y1={y} x2={goRight ? x2 - 8 : x2 + 8} y2={y} stroke={color} strokeWidth={1.5} strokeOpacity={isSelected ? 1 : 0.85} />
+                    <polygon points={goRight ? `${x2 - 2},${y - 5} ${x2 + 4},${y} ${x2 - 2},${y + 5}` : `${x2 + 2},${y - 5} ${x2 - 4},${y} ${x2 + 2},${y + 5}`} fill={color} />
                   </>
                 )}
-
-                {/* Label méthode */}
                 {!isSelf && (
                   <>
-                    <rect x={midX - 42} y={y - 14} width={84} height={15} rx={3}
-                      fill="#0a0f1a" />
-                    <text x={midX} y={y - 2} textAnchor="middle"
-                      fill={color} fontSize={10} fontWeight="700"
-                      letterSpacing="0.5">
-                      {flow.method}
-                    </text>
+                    <rect x={midX - 42} y={y - 14} width={84} height={15} rx={3} fill="#0a0f1a" />
+                    <text x={midX} y={y - 2} textAnchor="middle" fill={color} fontSize={10} fontWeight="700" letterSpacing="0.5">{flow.method}</text>
                   </>
                 )}
               </g>
@@ -290,30 +213,17 @@ const SipLadderDiagram = ({ uniqueid, calldate }: { uniqueid: string; calldate: 
           })}
         </svg>
       </div>
-
-      {/* Payload au clic */}
       <AnimatePresence>
         {selected && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="rounded-lg border border-border bg-[#0a0f1a] overflow-hidden">
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="rounded-lg border border-border bg-[#0a0f1a] overflow-hidden">
             <div className="flex items-center justify-between px-3 py-2 border-b border-border">
               <div className="flex items-center gap-2">
-                <span style={{ color: getSipColor(selected.method) }}
-                  className="text-xs font-bold font-mono">{selected.method}</span>
-                <span className="text-xs text-muted-foreground font-mono">
-                  {selected.src_ip}:{selected.src_port} → {selected.dst_ip}:{selected.dst_port}
-                </span>
+                <span style={{ color: getSipColor(selected.method) }} className="text-xs font-bold font-mono">{selected.method}</span>
+                <span className="text-xs text-muted-foreground font-mono">{selected.src_ip}:{selected.src_port} → {selected.dst_ip}:{selected.dst_port}</span>
               </div>
-              <span className="text-xs text-muted-foreground font-mono">
-                {((new Date(selected.created_at).getTime() - t0) / 1000).toFixed(3)}s
-              </span>
+              <span className="text-xs text-muted-foreground font-mono">{((new Date(selected.created_at).getTime() - t0) / 1000).toFixed(3)}s</span>
             </div>
-            <pre className="text-xs text-muted-foreground p-3 overflow-x-auto whitespace-pre-wrap max-h-52 overflow-y-auto font-mono leading-relaxed">
-              {selected.payload || "— payload non disponible —"}
-            </pre>
+            <pre className="text-xs text-muted-foreground p-3 overflow-x-auto whitespace-pre-wrap max-h-52 overflow-y-auto font-mono leading-relaxed">{selected.payload || "— payload non disponible —"}</pre>
           </motion.div>
         )}
       </AnimatePresence>
@@ -324,10 +234,7 @@ const SipLadderDiagram = ({ uniqueid, calldate }: { uniqueid: string; calldate: 
 // ── Modal détail CDR ───────────────────────────────────────────────────────────
 const CDRDetail = ({ cdr, onClose }: { cdr: CDR | null; onClose: () => void }) => {
   const [showSip, setShowSip] = useState(false);
-
-  // Reset SIP view when CDR changes
-  useEffect(() => { setShowSip(false); }, [cdr?.id]);
-
+  useEffect(() => { setShowSip(false); }, [cdr?.uniqueid]);
   return (
     <Dialog open={!!cdr} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -342,13 +249,11 @@ const CDRDetail = ({ cdr, onClose }: { cdr: CDR | null; onClose: () => void }) =
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 rounded-lg bg-muted/20">
                 <p className="text-xs text-muted-foreground mb-1">Appelant</p>
-                <p className="font-semibold text-foreground">{cdr.caller_name || cdr.caller}</p>
-                <p className="text-xs font-mono text-muted-foreground">{cdr.caller}</p>
+                <p className="font-semibold text-foreground">{cdr.src}</p>
               </div>
               <div className="p-3 rounded-lg bg-muted/20">
                 <p className="text-xs text-muted-foreground mb-1">Destinataire</p>
-                <p className="font-semibold text-foreground">{cdr.callee_name || cdr.callee}</p>
-                <p className="text-xs font-mono text-muted-foreground">{cdr.callee}</p>
+                <p className="font-semibold text-foreground">{cdr.dst}</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -369,45 +274,31 @@ const CDRDetail = ({ cdr, onClose }: { cdr: CDR | null; onClose: () => void }) =
                 </div>
               </div>
               <div className="p-3 rounded-lg bg-muted/20 text-center">
-                <p className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1"><Mic size={10} /> Codec</p>
-                <p className="text-sm font-mono font-bold text-foreground">{cdr.codec || "—"}</p>
+                <p className="text-xs text-muted-foreground mb-1">Contexte</p>
+                <p className="text-xs font-mono text-foreground">{cdr.context || "—"}</p>
               </div>
               <div className="p-3 rounded-lg bg-muted/20 text-center">
                 <p className="text-xs text-muted-foreground mb-1">IPBX</p>
-                <p className="text-xs font-mono text-foreground">{cdr.ipbx?.name || "—"}</p>
+                <p className="text-xs font-mono text-foreground">{cdr.ipbx_name || "—"}</p>
               </div>
             </div>
             <div className="p-3 rounded-lg bg-muted/20">
-              <p className="text-xs text-muted-foreground mb-1">ID Unique</p>
-              <p className="text-xs font-mono text-muted-foreground break-all">{cdr.uniqueid || cdr.id}</p>
+              <p className="text-xs text-muted-foreground mb-1">Channel</p>
+              <p className="text-xs font-mono text-muted-foreground break-all">{cdr.channel || "—"}</p>
             </div>
-
-            {/* Section Trace SIP */}
+            <div className="p-3 rounded-lg bg-muted/20">
+              <p className="text-xs text-muted-foreground mb-1">ID Unique</p>
+              <p className="text-xs font-mono text-muted-foreground break-all">{cdr.uniqueid}</p>
+            </div>
             <div className="rounded-lg border border-border overflow-hidden">
-              <button
-                onClick={() => setShowSip(v => !v)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-muted/20 hover:bg-muted/30 transition-colors text-sm font-semibold text-foreground">
-                <div className="flex items-center gap-2">
-                  <Network size={14} className="text-primary" />
-                  Trace SIP
-                </div>
-                {showSip
-                  ? <ChevronUp size={14} className="text-muted-foreground" />
-                  : <ChevronDown size={14} className="text-muted-foreground" />}
+              <button onClick={() => setShowSip(v => !v)} className="w-full flex items-center justify-between px-4 py-3 bg-muted/20 hover:bg-muted/30 transition-colors text-sm font-semibold text-foreground">
+                <div className="flex items-center gap-2"><Network size={14} className="text-primary" />Trace SIP</div>
+                {showSip ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
               </button>
               <AnimatePresence>
                 {showSip && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden">
-                    <div className="p-3">
-                      <SipLadderDiagram
-                        uniqueid={cdr.uniqueid || cdr.id}
-                        calldate={cdr.calldate}
-                      />
-                    </div>
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                    <div className="p-3"><SipLadderDiagram uniqueid={cdr.uniqueid} calldate={cdr.calldate} /></div>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -423,21 +314,18 @@ const CDRDetail = ({ cdr, onClose }: { cdr: CDR | null; onClose: () => void }) =
 const ActiveCalls = () => {
   const [tab, setTab] = useState<"active" | "history">("active");
 
-  // Appels actifs
+  // Appels actifs (depuis Supabase — inchangé)
   const [calls, setCalls] = useState<Call[]>([]);
   const [loadingCalls, setLoadingCalls] = useState(true);
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [tick, setTick] = useState(0);
 
-  // CDR
+  // CDR — depuis FreePBX directement via /api/cdr
   const [cdrs, setCdrs] = useState<CDR[]>([]);
-  const [cdrTotal, setCdrTotal] = useState(0);
   const [loadingCdr, setLoadingCdr] = useState(false);
   const [selectedCdr, setSelectedCdr] = useState<CDR | null>(null);
   const [ipbxList, setIpbxList] = useState<IPBX[]>([]);
-  const [page, setPage] = useState(0);
-  const PAGE_SIZE = 50;
 
   // Filtres CDR
   const [period, setPeriod] = useState("today");
@@ -448,13 +336,11 @@ const ActiveCalls = () => {
   const [dateTo, setDateTo] = useState("");
   const [cdrStats, setCdrStats] = useState({ total: 0, answered: 0, missed: 0, totalDuration: 0, avgDuration: 0 });
 
-  // ── Appels actifs ────────────────────────────────────────────────────────────
   const { applyFilter } = useAllowedIpbx();
 
+  // ── Appels actifs depuis Supabase (inchangé) ──────────────────────────────
   const fetchCalls = async () => {
-    const { data, error } = await applyFilter(supabase
-      .from("calls").select("*, ipbx(name)").eq("status", "active"))
-      .order("started_at", { ascending: false });
+    const { data, error } = await applyFilter(supabase.from("calls").select("*, ipbx(name)").eq("status", "active")).order("started_at", { ascending: false });
     if (!error && data) setCalls(data as Call[]);
     setLoadingCalls(false);
     setLastUpdate(new Date());
@@ -478,78 +364,86 @@ const ActiveCalls = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // ── CDR ──────────────────────────────────────────────────────────────────────
+  // ── Charger IPBX depuis Supabase (pour avoir IPs + credentials SSH) ───────
   useEffect(() => {
-    supabase.from("ipbx").select("id, name").then(({ data }) => {
-      if (data) setIpbxList(data as IPBX[]);
-    });
+    supabase.from("ipbx").select("id,name,ip_address,host,ssh_user,ssh_password")
+      .then(({ data }) => { if (data) setIpbxList(data as IPBX[]); });
   }, []);
 
-  const getDateRange = () => {
+  // ── CDR : calcul plage de dates ───────────────────────────────────────────
+  const getDateForApi = (): string => {
     const now = new Date();
-    let from = new Date();
     switch (period) {
-      case "today": from = new Date(now.getFullYear(), now.getMonth(), now.getDate()); break;
-      case "yesterday":
-        from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-        return { from: from.toISOString(), to: new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString() };
-      case "week": from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); break;
-      case "month": from = new Date(now.getFullYear(), now.getMonth(), 1); break;
-      case "last_month":
-        from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        return { from: from.toISOString(), to: new Date(now.getFullYear(), now.getMonth(), 1).toISOString() };
-      case "year": from = new Date(now.getFullYear(), 0, 1); break;
-      case "last_year":
-        from = new Date(now.getFullYear() - 1, 0, 1);
-        return { from: from.toISOString(), to: new Date(now.getFullYear(), 0, 1).toISOString() };
-      case "custom":
-        return {
-          from: dateFrom ? new Date(dateFrom).toISOString() : "",
-          to: dateTo ? new Date(dateTo + "T23:59:59").toISOString() : ""
-        };
+      case "today":      return now.toISOString().split("T")[0];
+      case "yesterday":  return new Date(now.getTime() - 86400000).toISOString().split("T")[0];
+      case "custom":     return dateFrom || now.toISOString().split("T")[0];
+      default:           return now.toISOString().split("T")[0];
     }
-    return { from: from.toISOString(), to: now.toISOString() };
   };
 
+  // ── CDR : fetch direct depuis FreePBX via SSH + MySQL ────────────────────
   const fetchCDRs = async () => {
     setLoadingCdr(true);
-    const { from, to } = getDateRange();
-    let query = applyFilter(supabase.from("cdr_history").select("*, ipbx(name)", { count: "exact" }))
-      .order("calldate", { ascending: false });
-    if (from) query = query.gte("calldate", from);
-    if (to) query = query.lte("calldate", to);
-    if (ipbxFilter !== "all") query = query.eq("ipbx_id", ipbxFilter);
-    if (dispositionFilter !== "all") query = query.eq("disposition", dispositionFilter);
-    if (searchText) query = query.or(`caller.ilike.%${searchText}%,callee.ilike.%${searchText}%,caller_name.ilike.%${searchText}%`);
-    query = query.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+    const date = getDateForApi();
+    const targets = ipbxFilter === "all"
+      ? ipbxList
+      : ipbxList.filter(i => i.id === ipbxFilter);
 
-    const { data, count } = await query;
-    if (data) {
-      setCdrs(data as CDR[]);
-      setCdrTotal(count || 0);
-      const answered = data.filter((c: any) => c.disposition === "ANSWERED").length;
-      const missed = data.filter((c: any) => c.disposition === "NO ANSWER").length;
-      const totalDuration = data.reduce((a: number, c: any) => a + (c.billsec || 0), 0);
-      setCdrStats({ total: count || 0, answered, missed, totalDuration, avgDuration: answered > 0 ? Math.round(totalDuration / answered) : 0 });
+    const allCdrs: CDR[] = [];
+
+    for (const ipbx of targets) {
+      const ip = ipbx.ip_address || ipbx.host || "";
+      if (!ip) continue;
+      const params = new URLSearchParams({
+        ip,
+        ssh_user:     ipbx.ssh_user || "root",
+        ssh_password: ipbx.ssh_password || "",
+        date,
+        limit:        "500",
+      });
+      try {
+        const res = await fetch(`/api/cdr?${params}`);
+        if (res.ok) {
+          const data = await res.json();
+          allCdrs.push(...(data.calls || []).map((c: CDR) => ({
+            ...c, ipbx_name: ipbx.name, ipbx_ip: ip, ipbx_id: ipbx.id,
+          })));
+        }
+      } catch {}
     }
+
+    // Trier par date décroissante
+    allCdrs.sort((a, b) => new Date(b.calldate).getTime() - new Date(a.calldate).getTime());
+
+    // Appliquer filtres locaux
+    let filtered = allCdrs;
+    if (dispositionFilter !== "all") filtered = filtered.filter(c => c.disposition === dispositionFilter);
+    if (searchText) filtered = filtered.filter(c =>
+      c.src?.includes(searchText) || c.dst?.includes(searchText) ||
+      c.ipbx_name?.toLowerCase().includes(searchText.toLowerCase())
+    );
+
+    setCdrs(filtered);
+
+    // Stats
+    const answered = filtered.filter(c => c.disposition === "ANSWERED").length;
+    const missed = filtered.filter(c => c.disposition === "NO ANSWER").length;
+    const totalDuration = filtered.reduce((a, c) => a + (c.billsec || 0), 0);
+    setCdrStats({
+      total: filtered.length, answered, missed, totalDuration,
+      avgDuration: answered > 0 ? Math.round(totalDuration / answered) : 0,
+    });
+
     setLoadingCdr(false);
   };
 
-  useEffect(() => { if (tab === "history") fetchCDRs(); }, [tab, page]);
+  useEffect(() => { if (tab === "history" && ipbxList.length > 0) fetchCDRs(); }, [tab, ipbxList, period, ipbxFilter]);
 
-  const handleExport = async () => {
-    const { from, to } = getDateRange();
-    let query = applyFilter(supabase.from("cdr_history").select("*, ipbx(name)")).order("calldate", { ascending: false });
-    if (from) query = query.gte("calldate", from);
-    if (to) query = query.lte("calldate", to);
-    if (ipbxFilter !== "all") query = query.eq("ipbx_id", ipbxFilter);
-    if (dispositionFilter !== "all") query = query.eq("disposition", dispositionFilter);
-    if (searchText) query = query.or(`caller.ilike.%${searchText}%,callee.ilike.%${searchText}%`);
-    const { data } = await query;
-    if (!data) return;
-
-    const headers = ["Date","Appelant","Nom appelant","Destinataire","Nom destinataire","Durée (s)","Billsec","Disposition","Codec","IPBX"];
-    const rows = data.map((c: any) => [formatDate(c.calldate), c.caller, c.caller_name || "", c.callee, c.callee_name || "", c.duration || 0, c.billsec || 0, c.disposition, c.codec || "", c.ipbx?.name || ""]);
+  // ── Export CSV ────────────────────────────────────────────────────────────
+  const handleExport = () => {
+    if (!cdrs.length) return;
+    const headers = ["Date", "Appelant", "Destinataire", "Durée (s)", "Billsec", "Disposition", "Channel", "IPBX"];
+    const rows = cdrs.map(c => [formatDate(c.calldate), c.src, c.dst, c.duration || 0, c.billsec || 0, c.disposition, c.channel || "", c.ipbx_name || ""]);
     const csv = [headers, ...rows].map(r => r.map((v: any) => `"${v}"`).join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -591,17 +485,15 @@ const ActiveCalls = () => {
 
       {/* Onglets */}
       <div className="flex gap-1 p-1 bg-muted/30 rounded-xl w-fit">
-        <button onClick={() => setTab("active")}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === "active" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+        <button onClick={() => setTab("active")} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === "active" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
           <PhoneCall size={14} className="inline mr-1.5" />Appels actifs
         </button>
-        <button onClick={() => { setTab("history"); }}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === "history" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
+        <button onClick={() => setTab("history")} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === "history" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
           <Clock size={14} className="inline mr-1.5" />Historique CDR
         </button>
       </div>
 
-      {/* ── ONGLET APPELS ACTIFS ─────────────────────────────────────────── */}
+      {/* ── ONGLET APPELS ACTIFS (inchangé) ─────────────────────────────── */}
       {tab === "active" && (
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
@@ -619,12 +511,9 @@ const ActiveCalls = () => {
             </div>
           </div>
           <p className="text-xs text-muted-foreground">Mise à jour : {lastUpdate.toLocaleTimeString()}</p>
-
           <div className="grid gap-3">
             {loadingCalls ? (
-              <div className="noc-card p-8 text-center border border-border">
-                <p className="text-muted-foreground text-sm">Chargement...</p>
-              </div>
+              <div className="noc-card p-8 text-center border border-border"><p className="text-muted-foreground text-sm">Chargement...</p></div>
             ) : calls.length === 0 ? (
               <div className="noc-card p-12 text-center border border-border">
                 <Phone className="mx-auto text-muted-foreground mb-3" size={40} />
@@ -634,11 +523,7 @@ const ActiveCalls = () => {
             ) : (
               <AnimatePresence>
                 {calls.map((call, i) => (
-                  <motion.div key={call.id}
-                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: -20 }} transition={{ delay: i * 0.04 }}
-                    onClick={() => setSelectedCall(call)}
-                    className="noc-card border border-border p-4 cursor-pointer hover:border-primary/50 transition-colors">
+                  <motion.div key={call.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ delay: i * 0.04 }} onClick={() => setSelectedCall(call)} className="noc-card border border-border p-4 cursor-pointer hover:border-primary/50 transition-colors">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="flex items-center gap-4">
                         <StatusBadge status={call.status} />
@@ -659,28 +544,11 @@ const ActiveCalls = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-5 text-xs flex-wrap">
-                        <div className="text-center">
-                          <p className="text-muted-foreground uppercase mb-0.5">Durée</p>
-                          <p className="font-mono font-bold text-foreground flex items-center gap-1">
-                            <Timer size={11} />{formatDuration(call.started_at)}
-                          </p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-muted-foreground uppercase mb-0.5">Codec</p>
-                          <p className="font-mono font-bold text-foreground">{call.codec || "—"}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-muted-foreground uppercase mb-0.5">MOS</p>
-                          <p className={`font-mono font-bold ${getMosColor(call.mos)}`}>{call.mos ? call.mos.toFixed(1) : "—"}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-muted-foreground uppercase mb-0.5">Jitter</p>
-                          <p className={`font-mono font-bold ${getJitterColor(call.jitter)}`}>{call.jitter ? `${call.jitter}ms` : "—"}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-muted-foreground uppercase mb-0.5">IPBX</p>
-                          <p className="font-mono text-xs text-muted-foreground">{call.ipbx?.name || "—"}</p>
-                        </div>
+                        <div className="text-center"><p className="text-muted-foreground uppercase mb-0.5">Durée</p><p className="font-mono font-bold text-foreground flex items-center gap-1"><Timer size={11} />{formatDuration(call.started_at)}</p></div>
+                        <div className="text-center"><p className="text-muted-foreground uppercase mb-0.5">Codec</p><p className="font-mono font-bold text-foreground">{call.codec || "—"}</p></div>
+                        <div className="text-center"><p className="text-muted-foreground uppercase mb-0.5">MOS</p><p className={`font-mono font-bold ${getMosColor(call.mos)}`}>{call.mos ? call.mos.toFixed(1) : "—"}</p></div>
+                        <div className="text-center"><p className="text-muted-foreground uppercase mb-0.5">Jitter</p><p className={`font-mono font-bold ${getJitterColor(call.jitter)}`}>{call.jitter ? `${call.jitter}ms` : "—"}</p></div>
+                        <div className="text-center"><p className="text-muted-foreground uppercase mb-0.5">IPBX</p><p className="font-mono text-xs text-muted-foreground">{call.ipbx?.name || "—"}</p></div>
                       </div>
                     </div>
                   </motion.div>
@@ -691,7 +559,7 @@ const ActiveCalls = () => {
         </div>
       )}
 
-      {/* ── ONGLET HISTORIQUE CDR ────────────────────────────────────────── */}
+      {/* ── ONGLET HISTORIQUE CDR — depuis FreePBX MySQL ─────────────────── */}
       {tab === "history" && (
         <div className="space-y-4">
           {/* Filtres */}
@@ -702,23 +570,18 @@ const ActiveCalls = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div>
                 <Label className="text-xs">Période</Label>
-                <Select value={period} onValueChange={(v) => { setPeriod(v); setPage(0); }}>
+                <Select value={period} onValueChange={(v) => setPeriod(v)}>
                   <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="today">Aujourd'hui</SelectItem>
                     <SelectItem value="yesterday">Hier</SelectItem>
-                    <SelectItem value="week">7 derniers jours</SelectItem>
-                    <SelectItem value="month">Ce mois</SelectItem>
-                    <SelectItem value="last_month">Mois dernier</SelectItem>
-                    <SelectItem value="year">Cette année</SelectItem>
-                    <SelectItem value="last_year">Année dernière</SelectItem>
-                    <SelectItem value="custom">Personnalisé</SelectItem>
+                    <SelectItem value="custom">Date personnalisée</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label className="text-xs">IPBX</Label>
-                <Select value={ipbxFilter} onValueChange={(v) => { setIpbxFilter(v); setPage(0); }}>
+                <Select value={ipbxFilter} onValueChange={(v) => setIpbxFilter(v)}>
                   <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tous les IPBX</SelectItem>
@@ -728,7 +591,7 @@ const ActiveCalls = () => {
               </div>
               <div>
                 <Label className="text-xs">Statut</Label>
-                <Select value={dispositionFilter} onValueChange={(v) => { setDispositionFilter(v); setPage(0); }}>
+                <Select value={dispositionFilter} onValueChange={(v) => setDispositionFilter(v)}>
                   <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tous</SelectItem>
@@ -742,30 +605,34 @@ const ActiveCalls = () => {
                 <Label className="text-xs">Recherche</Label>
                 <div className="relative mt-1">
                   <Search size={11} className="absolute left-2 top-2 text-muted-foreground" />
-                  <Input value={searchText} onChange={(e) => { setSearchText(e.target.value); setPage(0); }}
-                    placeholder="Numéro ou nom..." className="h-8 text-xs pl-6" />
+                  <Input value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Numéro ou IPBX..." className="h-8 text-xs pl-6" />
                 </div>
               </div>
             </div>
             {period === "custom" && (
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label className="text-xs">Du</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="mt-1 h-8 text-xs" /></div>
-                <div><Label className="text-xs">Au</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="mt-1 h-8 text-xs" /></div>
+              <div>
+                <Label className="text-xs">Date</Label>
+                <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="mt-1 h-8 text-xs w-48" />
               </div>
             )}
-            <Button onClick={() => { setPage(0); fetchCDRs(); }} size="sm">
-              <Search size={13} className="mr-1" /> Rechercher
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => fetchCDRs()} size="sm">
+                <Search size={13} className="mr-1" /> Rechercher
+              </Button>
+              <span className="text-xs text-muted-foreground italic">
+                Source : CDR MySQL FreePBX — aucun stockage en base
+              </span>
+            </div>
           </div>
 
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {[
-              { label: "Total", value: cdrStats.total, color: "text-foreground" },
-              { label: "Répondus", value: cdrStats.answered, color: "text-success" },
-              { label: "Manqués", value: cdrStats.missed, color: "text-warning" },
+              { label: "Total",        value: cdrStats.total,                       color: "text-foreground" },
+              { label: "Répondus",     value: cdrStats.answered,                    color: "text-success" },
+              { label: "Manqués",      value: cdrStats.missed,                      color: "text-warning" },
               { label: "Durée totale", value: formatSeconds(cdrStats.totalDuration), color: "text-primary" },
-              { label: "Durée moy.", value: formatSeconds(cdrStats.avgDuration), color: "text-primary" },
+              { label: "Durée moy.",   value: formatSeconds(cdrStats.avgDuration),  color: "text-primary" },
             ].map((s) => (
               <div key={s.label} className="noc-card p-3 border border-border text-center">
                 <p className="text-xs text-muted-foreground uppercase mb-1">{s.label}</p>
@@ -790,47 +657,32 @@ const ActiveCalls = () => {
                 </thead>
                 <tbody>
                   {loadingCdr ? (
-                    <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Chargement...</td></tr>
+                    <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">
+                      <Loader2 size={16} className="animate-spin inline mr-2" />Lecture CDR depuis FreePBX...
+                    </td></tr>
                   ) : cdrs.length === 0 ? (
-                    <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Aucun enregistrement — passez un appel pour commencer</td></tr>
+                    <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Aucun enregistrement pour cette date</td></tr>
                   ) : (
                     cdrs.map((cdr, i) => (
-                      <motion.tr key={cdr.id}
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.01 }}
+                      <motion.tr key={cdr.uniqueid || i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.005 }}
                         onClick={() => setSelectedCdr(cdr)}
-                        className="border-b border-border/50 hover:bg-muted/20 cursor-pointer transition-colors"
-                      >
+                        className="border-b border-border/50 hover:bg-muted/20 cursor-pointer transition-colors">
                         <td className="p-3 font-mono text-muted-foreground whitespace-nowrap">{formatDate(cdr.calldate)}</td>
-                        <td className="p-3">
-                          <p className="font-semibold text-foreground">{cdr.caller_name || cdr.caller}</p>
-                          <p className="text-muted-foreground font-mono">{cdr.caller}</p>
-                        </td>
-                        <td className="p-3">
-                          <p className="font-semibold text-foreground">{cdr.callee_name || cdr.callee}</p>
-                          <p className="text-muted-foreground font-mono">{cdr.callee}</p>
-                        </td>
+                        <td className="p-3 font-mono font-semibold text-foreground">{cdr.src}</td>
+                        <td className="p-3 font-mono text-foreground">{cdr.dst}</td>
                         <td className="p-3 font-mono font-bold text-foreground">{formatSeconds(cdr.billsec || cdr.duration)}</td>
                         <td className="p-3">
                           <div className={`flex items-center gap-1 font-semibold ${getDispositionColor(cdr.disposition)}`}>
                             {getDispositionIcon(cdr.disposition)} {cdr.disposition || "—"}
                           </div>
                         </td>
-                        <td className="p-3 text-muted-foreground">{cdr.ipbx?.name || "—"}</td>
+                        <td className="p-3 text-muted-foreground">{cdr.ipbx_name || "—"}</td>
                       </motion.tr>
                     ))
                   )}
                 </tbody>
               </table>
             </div>
-            {cdrTotal > PAGE_SIZE && (
-              <div className="flex items-center justify-between p-3 border-t border-border">
-                <p className="text-xs text-muted-foreground">{page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, cdrTotal)} sur {cdrTotal}</p>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}>Précédent</Button>
-                  <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={(page + 1) * PAGE_SIZE >= cdrTotal}>Suivant</Button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -838,59 +690,21 @@ const ActiveCalls = () => {
       {/* Modal appel actif */}
       <Dialog open={!!selectedCall} onOpenChange={() => setSelectedCall(null)}>
         <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <PhoneCall size={16} className="text-success animate-pulse" />
-              Appel en cours
-            </DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><PhoneCall size={16} className="text-success animate-pulse" />Appel en cours</DialogTitle></DialogHeader>
           {selectedCall && (
             <div className="space-y-4 mt-2">
               <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 rounded-lg bg-muted/20">
-                  <p className="text-xs text-muted-foreground mb-1">Appelant</p>
-                  <p className="font-semibold text-foreground">{selectedCall.caller_name || selectedCall.caller}</p>
-                  <p className="text-xs font-mono text-muted-foreground">{selectedCall.caller}</p>
-                </div>
-                <div className="p-3 rounded-lg bg-muted/20">
-                  <p className="text-xs text-muted-foreground mb-1">Destinataire</p>
-                  <p className="font-semibold text-foreground">{selectedCall.callee_name || selectedCall.callee}</p>
-                  <p className="text-xs font-mono text-muted-foreground">{selectedCall.callee}</p>
-                </div>
+                <div className="p-3 rounded-lg bg-muted/20"><p className="text-xs text-muted-foreground mb-1">Appelant</p><p className="font-semibold text-foreground">{selectedCall.caller_name || selectedCall.caller}</p><p className="text-xs font-mono text-muted-foreground">{selectedCall.caller}</p></div>
+                <div className="p-3 rounded-lg bg-muted/20"><p className="text-xs text-muted-foreground mb-1">Destinataire</p><p className="font-semibold text-foreground">{selectedCall.callee_name || selectedCall.callee}</p><p className="text-xs font-mono text-muted-foreground">{selectedCall.callee}</p></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 rounded-lg bg-muted/20">
-                  <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1"><Calendar size={10} /> Début</p>
-                  <p className="text-sm font-mono text-foreground">{formatDate(selectedCall.started_at)}</p>
-                </div>
-                <div className="p-3 rounded-lg bg-muted/20">
-                  <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1"><Timer size={10} /> Durée</p>
-                  <p className="text-sm font-mono font-bold text-success">{formatDuration(selectedCall.started_at)}</p>
-                </div>
+                <div className="p-3 rounded-lg bg-muted/20"><p className="text-xs text-muted-foreground mb-1 flex items-center gap-1"><Calendar size={10} /> Début</p><p className="text-sm font-mono text-foreground">{formatDate(selectedCall.started_at)}</p></div>
+                <div className="p-3 rounded-lg bg-muted/20"><p className="text-xs text-muted-foreground mb-1 flex items-center gap-1"><Timer size={10} /> Durée</p><p className="text-sm font-mono font-bold text-success">{formatDuration(selectedCall.started_at)}</p></div>
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <div className="p-3 rounded-lg bg-muted/20 text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Codec</p>
-                  <p className="font-mono font-bold text-foreground">{selectedCall.codec || "—"}</p>
-                </div>
-                <div className="p-3 rounded-lg bg-muted/20 text-center">
-                  <p className="text-xs text-muted-foreground mb-1">MOS</p>
-                  <p className={`font-mono font-bold ${getMosColor(selectedCall.mos)}`}>{selectedCall.mos ? selectedCall.mos.toFixed(1) : "—"}</p>
-                </div>
-                <div className="p-3 rounded-lg bg-muted/20 text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Jitter</p>
-                  <p className={`font-mono font-bold ${getJitterColor(selectedCall.jitter)}`}>{selectedCall.jitter ? `${selectedCall.jitter}ms` : "—"}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 rounded-lg bg-muted/20">
-                  <p className="text-xs text-muted-foreground mb-1">IPBX</p>
-                  <p className="text-sm font-mono text-foreground">{selectedCall.ipbx?.name || "—"}</p>
-                </div>
-                <div className="p-3 rounded-lg bg-muted/20">
-                  <p className="text-xs text-muted-foreground mb-1">Trunk ID</p>
-                  <p className="text-xs font-mono text-muted-foreground break-all">{selectedCall.trunk_name || "—"}</p>
-                </div>
+                <div className="p-3 rounded-lg bg-muted/20 text-center"><p className="text-xs text-muted-foreground mb-1">Codec</p><p className="font-mono font-bold text-foreground">{selectedCall.codec || "—"}</p></div>
+                <div className="p-3 rounded-lg bg-muted/20 text-center"><p className="text-xs text-muted-foreground mb-1">MOS</p><p className={`font-mono font-bold ${getMosColor(selectedCall.mos)}`}>{selectedCall.mos ? selectedCall.mos.toFixed(1) : "—"}</p></div>
+                <div className="p-3 rounded-lg bg-muted/20 text-center"><p className="text-xs text-muted-foreground mb-1">Jitter</p><p className={`font-mono font-bold ${getJitterColor(selectedCall.jitter)}`}>{selectedCall.jitter ? `${selectedCall.jitter}ms` : "—"}</p></div>
               </div>
             </div>
           )}
@@ -904,5 +718,3 @@ const ActiveCalls = () => {
 };
 
 export default ActiveCalls;
-
-
