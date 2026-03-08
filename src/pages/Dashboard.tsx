@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useAllowedIpbx } from "@/hooks/useAllowedIpbx";
 import { supabase } from "@/integrations/supabase/client";
 import { KPICard } from "@/components/noc/KPICard";
 import { StatusBadge } from "@/components/noc/StatusBadge";
@@ -24,25 +25,15 @@ const Dashboard = () => {
   const [qualityData, setQualityData] = useState<any[]>([]);
   const [callVolume, setCallVolume] = useState<any[]>([]);
   const { isAdmin, user } = useAuth();
-  const [allowedIpbxIds, setAllowedIpbxIds] = useState<string[]>([]);
-
-  const fetchAllowedIpbx = async () => {
-    if (isAdmin || !user) return;
-    const { data: uc } = await supabase.from("user_countries").select("country_id").eq("user_id", user.id);
-    const countryIds = uc?.map((c: any) => c.country_id) || [];
-    if (countryIds.length > 0) {
-      const { data: ipbxData } = await supabase.from("ipbx").select("id").in("country_id", countryIds);
-      setAllowedIpbxIds(ipbxData?.map((i: any) => i.id) || []);
-    }
-  };
+  const { applyFilter, allowedIpbxIds, ready } = useAllowedIpbx();
 
   const fetchAll = async () => {
     try {
       const [trunkRes, extRes, callRes, alertRes, qualRes] = await Promise.all([
-        isAdmin || allowedIpbxIds.length === 0 ? supabase.from("sip_trunks").select("id, name, status, host") : supabase.from("sip_trunks").select("id, name, status, host").in("ipbx_id", allowedIpbxIds),
-        isAdmin || allowedIpbxIds.length === 0 ? supabase.from("extensions").select("id, status") : supabase.from("extensions").select("id, status").in("ipbx_id", allowedIpbxIds),
+        applyFilter(supabase.from("sip_trunks").select("id, name, status, host")),
+        applyFilter(supabase.from("extensions").select("id, status")),
         supabase.from("calls").select("id").eq("status", "active"),
-        supabase.from("alerts").select("id, type, title, message, created_at, acknowledged").eq("acknowledged", false).order("created_at", { ascending: false }).limit(5),
+        applyFilter(supabase.from("alerts").select("id, type, title, message, created_at, acknowledged")).eq("acknowledged", false).order("created_at", { ascending: false }).limit(5),
         supabase.from("quality_metrics").select("mos, jitter, recorded_at").gte("recorded_at", new Date(Date.now() - 3600000 * 24).toISOString()).order("recorded_at", { ascending: true }),
       ]);
 
@@ -86,12 +77,12 @@ const Dashboard = () => {
     }
   };
 
-  useEffect(() => { fetchAllowedIpbx().then(() => fetchAll()); }, [isAdmin, user]);
-  useEffect(() => { if (isAdmin || allowedIpbxIds.length > 0) fetchAll(); }, [allowedIpbxIds]);
+  useEffect(() => { if (ready) fetchAll(); }, [ready]);
   useEffect(() => {
+    if (!ready) return;
     const interval = setInterval(fetchAll, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [ready]);
 
   return (
     <div className="space-y-6">
