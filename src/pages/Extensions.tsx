@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAllowedIpbx } from "@/hooks/useAllowedIpbx";
 import { StatusBadge } from "@/components/noc/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Phone, Monitor, RefreshCw } from "lucide-react";
@@ -21,24 +22,24 @@ interface Extension {
 const Extensions = () => {
   const [extensions, setExtensions] = useState<Extension[]>([]);
   const [loading, setLoading] = useState(true);
+  const { applyFilter, ready } = useAllowedIpbx();
 
   const fetchData = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("extensions")
-      .select("*, ipbx(name)")
-      .order("number");
+    const { data } = await applyFilter(
+      supabase.from("extensions").select("*, ipbx(name)")
+    ).order("number");
     if (data) setExtensions(data as Extension[]);
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { if (ready) fetchData(); }, [ready]);
 
-  // Auto-refresh toutes les 30s
   useEffect(() => {
+    if (!ready) return;
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [ready]);
 
   return (
     <div className="space-y-6">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAllowedIpbx } from "@/hooks/useAllowedIpbx";
 import { StatusBadge } from "@/components/noc/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Network, Clock, AlertTriangle, RefreshCw } from "lucide-react";
@@ -28,24 +29,24 @@ interface SipTrunk {
 const SipTrunks = () => {
   const [trunks, setTrunks] = useState<SipTrunk[]>([]);
   const [loading, setLoading] = useState(true);
+  const { applyFilter, ready } = useAllowedIpbx();
 
   const fetchData = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("sip_trunks")
-      .select("*, ipbx:ipbx!sip_trunks_ipbx_id_fkey(name), remote_ipbx:ipbx!sip_trunks_remote_ipbx_id_fkey(name)")
-      .order("name");
+    const { data } = await applyFilter(
+      supabase.from("sip_trunks").select("*, ipbx:ipbx!sip_trunks_ipbx_id_fkey(name), remote_ipbx:ipbx!sip_trunks_remote_ipbx_id_fkey(name)")
+    ).order("name");
     if (data) setTrunks(data as unknown as SipTrunk[]);
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { if (ready) fetchData(); }, [ready]);
 
-  // Auto-refresh toutes les 30s
   useEffect(() => {
+    if (!ready) return;
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [ready]);
 
   return (
     <div className="space-y-6">
@@ -109,38 +110,25 @@ const SipTrunks = () => {
                     </p>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                   <div>
                     <p className="text-xs text-muted-foreground uppercase">Latence</p>
-                    <p className={`text-lg font-mono font-bold ${
-                      !trunk.latency ? "text-muted-foreground" :
-                      trunk.latency > 50 ? "text-warning" : "text-success"
-                    }`}>{trunk.latency ? `${trunk.latency}ms` : "—"}</p>
+                    <p className={`text-lg font-mono font-bold ${!trunk.latency ? "text-muted-foreground" : trunk.latency > 50 ? "text-warning" : "text-success"}`}>{trunk.latency ? `${trunk.latency}ms` : "—"}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground uppercase">Uptime</p>
-                    <p className={`text-lg font-mono font-bold ${
-                      (trunk.uptime ?? 0) >= 99.9 ? "text-success" :
-                      (trunk.uptime ?? 0) >= 99 ? "text-warning" : "text-destructive"
-                    }`}>{trunk.uptime ?? 0}%</p>
+                    <p className={`text-lg font-mono font-bold ${(trunk.uptime ?? 0) >= 99.9 ? "text-success" : (trunk.uptime ?? 0) >= 99 ? "text-warning" : "text-destructive"}`}>{trunk.uptime ?? 0}%</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground uppercase">Canaux</p>
-                    <p className="text-lg font-mono font-bold text-foreground">
-                      {trunk.channels ?? 0}<span className="text-muted-foreground text-sm">/{trunk.max_channels ?? 30}</span>
-                    </p>
+                    <p className="text-lg font-mono font-bold text-foreground">{trunk.channels ?? 0}<span className="text-muted-foreground text-sm">/{trunk.max_channels ?? 30}</span></p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground uppercase">Échecs</p>
-                    <p className={`text-lg font-mono font-bold ${
-                      (trunk.failed_attempts ?? 0) > 10 ? "text-destructive" :
-                      (trunk.failed_attempts ?? 0) > 0 ? "text-warning" : "text-success"
-                    }`}>{trunk.failed_attempts ?? 0}</p>
+                    <p className={`text-lg font-mono font-bold ${(trunk.failed_attempts ?? 0) > 10 ? "text-destructive" : (trunk.failed_attempts ?? 0) > 0 ? "text-warning" : "text-success"}`}>{trunk.failed_attempts ?? 0}</p>
                   </div>
                 </div>
               </div>
-
               <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Clock size={12} /> Dernier check: {trunk.last_check ? new Date(trunk.last_check).toLocaleString() : "—"}

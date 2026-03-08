@@ -40,7 +40,7 @@ const gridStyle = { strokeDasharray: "3 3", stroke: "hsl(220, 14%, 18%)" };
 const axisStyle = { stroke: "hsl(215, 15%, 55%)", fontSize: 10 };
 
 const QualityMonitoring = () => {
-  const { applyFilter } = useAllowedIpbx();
+  const { applyFilter, allowedIpbxIds, isAdmin, ready } = useAllowedIpbx();
   const [metrics, setMetrics] = useState<ChartPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("1h");
@@ -49,9 +49,14 @@ const QualityMonitoring = () => {
   const [lastUpdate, setLastUpdate] = useState(new Date());
 
   useEffect(() => {
-    supabase.from("ipbx").select("id, name").order("name")
-      .then(({ data }) => { if (data) setIpbxList(data as IPBX[]); });
-  }, []);
+    if (!ready) return;
+    let q = supabase.from("ipbx").select("id, name").order("name");
+    if (!isAdmin && allowedIpbxIds && allowedIpbxIds.length > 0)
+      q = q.in("id", allowedIpbxIds) as any;
+    else if (!isAdmin)
+      q = q.in("id", ["00000000-0000-0000-0000-000000000000"]) as any;
+    q.then(({ data }) => { if (data) setIpbxList(data as IPBX[]); });
+  }, [ready, isAdmin, allowedIpbxIds]);
 
   const fetchMetrics = async () => {
     setLoading(true);
@@ -100,12 +105,13 @@ const QualityMonitoring = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchMetrics(); }, [period, ipbxFilter]);
+  useEffect(() => { if (ready) fetchMetrics(); }, [period, ipbxFilter, ready]);
 
   useEffect(() => {
+    if (!ready) return;
     const interval = setInterval(fetchMetrics, 30000);
     return () => clearInterval(interval);
-  }, [period, ipbxFilter]);
+  }, [period, ipbxFilter, ready]);
 
   const avg = metrics.length > 0 ? {
     mos: parseFloat((metrics.reduce((s, m) => s + m.mos, 0) / metrics.length).toFixed(2)),

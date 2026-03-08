@@ -338,7 +338,7 @@ const ActiveCalls = () => {
   const [dateTo, setDateTo] = useState("");
   const [cdrStats, setCdrStats] = useState({ total: 0, answered: 0, missed: 0, totalDuration: 0, avgDuration: 0 });
 
-  const { applyFilter } = useAllowedIpbx();
+  const { applyFilter, allowedIpbxIds, isAdmin: isAdminUser } = useAllowedIpbx();
 
   // ── Appels actifs depuis Supabase (inchangé) ──────────────────────────────
   const fetchCalls = async () => {
@@ -366,11 +366,15 @@ const ActiveCalls = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // ── Charger IPBX depuis Supabase (pour avoir IPs + credentials SSH) ───────
+  // ── Charger IPBX depuis Supabase (filtrés selon droits user) ──────────────
   useEffect(() => {
-    supabase.from("ipbx").select("id,name,ip_address,host,ssh_user,ssh_password")
-      .then(({ data }) => { if (data) setIpbxList(data as IPBX[]); });
-  }, []);
+    let q: any = supabase.from("ipbx").select("id,name,ip_address,host,ssh_user,ssh_password");
+    if (!isAdminUser && allowedIpbxIds && allowedIpbxIds.length > 0)
+      q = q.in("id", allowedIpbxIds);
+    else if (!isAdminUser && allowedIpbxIds !== null)
+      q = q.in("id", ["00000000-0000-0000-0000-000000000000"]);
+    q.then(({ data }: any) => { if (data) setIpbxList(data as IPBX[]); });
+  }, [isAdminUser, allowedIpbxIds]);
 
   // ── CDR : calcul plage de dates ───────────────────────────────────────────
   const getDateRangeForApi = (): { date_from: string; date_to: string } => {
