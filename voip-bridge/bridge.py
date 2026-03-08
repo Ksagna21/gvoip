@@ -534,6 +534,18 @@ def sync_ipbx_api(ipbx):
         return
     supabase.table("ipbx").update({"status": "online"}).eq("id", iid).execute()
 
+
+def cleanup_old_alerts():
+    """Supprime les alertes acquittées de plus de 24h."""
+    try:
+        from datetime import timedelta
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+        res = supabase.table("alerts").delete()            .eq("acknowledged", True)            .lt("acknowledged_at", cutoff)            .execute()
+        if res.data:
+            logging.info(f"Nettoyage alertes: {len(res.data)} alertes supprimees")
+    except Exception as e:
+        logging.error(f"Erreur nettoyage alertes: {e}")
+
 def main():
     logging.info("Démarrage du Bridge FreePBX -> Supabase")
     ami_threads = {}
@@ -563,6 +575,11 @@ def main():
                         logging.info(f"Thread AMI lancé pour {ipbx['name']}")
         except Exception as e:
             logging.error(f"Erreur boucle principale: {e}")
+
+        # Nettoyage alertes acquittées > 24h (toutes les heures)
+        if int(time.time()) % 3600 < 60:
+            cleanup_old_alerts()
+
         time.sleep(60)
 
 if __name__ == "__main__": main()
