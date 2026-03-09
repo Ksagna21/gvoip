@@ -84,10 +84,8 @@ const Dashboard = () => {
         const groups = new Map<string, { entrants: number; sortants: number }>();
         cdrRes.data.forEach((call: any) => {
           if (!call.started_at) return;
-          const h = new Date(call.started_at).toLocaleTimeString("fr-FR", {
-            hour: "2-digit",
-            minute: "00",
-          });
+          const d = new Date(call.started_at);
+          const h = `${String(d.getHours()).padStart(2, "0")}:00`;
           if (!groups.has(h)) groups.set(h, { entrants: 0, sortants: 0 });
           // Sans colonne direction, on incrémente "entrants" comme compteur total
           groups.get(h)!.entrants += 1;
