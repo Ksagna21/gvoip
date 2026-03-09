@@ -69,8 +69,35 @@ const Dashboard = () => {
       })));
     }
 
-      // Call volume - grouper par heure (placeholder if cdr_history not available)
-      setCallVolume([]);
+      // Call volume - requête réelle sur la table calls (24h)
+      const since24h = new Date(Date.now() - 3600000 * 24).toISOString();
+      const cdrRes = await applyFilter(
+        supabase
+          .from("calls")
+          .select("id, direction, created_at, status")
+          .gte("created_at", since24h)
+          .order("created_at", { ascending: true })
+      );
+
+      if (cdrRes.data && cdrRes.data.length > 0) {
+        // Grouper par heure et séparer entrants / sortants
+        const groups = new Map<string, { entrants: number; sortants: number }>();
+        cdrRes.data.forEach((call: any) => {
+          const h = new Date(call.created_at).toLocaleTimeString("fr-FR", {
+            hour: "2-digit",
+            minute: "00",
+          });
+          if (!groups.has(h)) groups.set(h, { entrants: 0, sortants: 0 });
+          const g = groups.get(h)!;
+          if (call.direction === "inbound") g.entrants += 1;
+          else g.sortants += 1;
+        });
+        setCallVolume(
+          Array.from(groups.entries()).map(([h, v]) => ({ h, ...v }))
+        );
+      } else {
+        setCallVolume([]);
+      }
     } catch (error) {
       console.error("Dashboard fetch error:", error);
       setCallVolume([]);
