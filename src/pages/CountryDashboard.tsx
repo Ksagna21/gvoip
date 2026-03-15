@@ -39,13 +39,11 @@ const getFlagEmoji = (code: string) => {
 
 const CountryDashboard = () => {
   const tooltipStyle = {
-    background: getComputedStyle(document.documentElement).getPropertyValue("--card")
-      ? `hsl(${getComputedStyle(document.documentElement).getPropertyValue("--card")})`
-      : "#ffffff",
-    border: `1px solid hsl(${getComputedStyle(document.documentElement).getPropertyValue("--border")})`,
+    background: "#ffffff",
+    border: "1px solid #e2e8f0",
     borderRadius: 8,
     fontSize: 12,
-    color: `hsl(${getComputedStyle(document.documentElement).getPropertyValue("--foreground")})`,
+    color: "#1a202c",
   };
   const { id } = useParams<{ id: string }>();
   const [country, setCountry] = useState<any>(null);
