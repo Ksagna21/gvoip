@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 export const ThemeToggle = () => {
   const [dark, setDark] = useState(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("theme") !== "light";
+      return localStorage.getItem("theme") === "dark";
     }
     return true;
   });
