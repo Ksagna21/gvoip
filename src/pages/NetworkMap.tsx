@@ -13,11 +13,11 @@ const C = {
   warn:    "#f59e0b",
   up:      "#10b981",
   down:    "#f43f5e",
-  text:    "#0f172a",
-  muted:   "#94a3b8",
-  border:  "#e2e8f0",
-  bg:      "#f8fafc",
-  card:    "#ffffff",
+  text:    "hsl(var(--foreground))",
+  muted:   "hsl(var(--muted-foreground))",
+  border:  "hsl(var(--border))",
+  bg:      "hsl(var(--background))",
+  card:    "hsl(var(--card))",
   teal:    "#0d9488",
 };
 
@@ -135,7 +135,7 @@ const NetworkMap = () => {
   // Tooltip component
   const Tip=({x,y,children}:{x:number;y:number;children:React.ReactNode})=>(
     <foreignObject x={x} y={y} width={190} height={130} style={{overflow:"visible"}}>
-      <div style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:10,padding:"10px 14px",fontSize:12,color:"#0f172a",boxShadow:"0 8px 24px rgba(15,23,42,0.12)",whiteSpace:"nowrap",width:"fit-content",fontFamily:"Raleway,sans-serif"}}>
+      <div style={{background:"hsl(var(--card))",border:"1px solid hsl(var(--border))",borderRadius:10,padding:"10px 14px",fontSize:12,color:"hsl(var(--foreground))",boxShadow:"0 8px 24px rgba(0,0,0,0.18)",whiteSpace:"nowrap",width:"fit-content",fontFamily:"Raleway,sans-serif"}}>
         {children}
       </div>
     </foreignObject>
@@ -159,7 +159,7 @@ const NetworkMap = () => {
         <g key={t.id} onMouseEnter={()=>setHT(t.id)} onMouseLeave={()=>setHT(null)}>
           <line x1={src.x} y1={src.y} x2={ex} y2={ey} stroke={tc} strokeWidth={isH?2.5:1.5} strokeDasharray={isDash?"7,4":"none"} strokeOpacity={0.7}/>
           <circle cx={ex} cy={ey} r={4} fill={tc} opacity={0.5}/>
-          {t.latency&&<text x={(src.x+ex)/2} y={(src.y+ey)/2-6} fill={tc} fontSize={9} textAnchor="middle" fontFamily="Raleway,sans-serif" fontWeight="600">{t.latency}ms</text>}
+          {t.latency&&<><rect x={(src.x+ex)/2-16} y={(src.y+ey)/2-16} width={32} height={13} rx={6} fill="hsl(var(--card))" stroke={tc} strokeWidth={0.8}/><text x={(src.x+ex)/2} y={(src.y+ey)/2-7} fill={tc} fontSize={8} textAnchor="middle" fontFamily="Raleway,sans-serif" fontWeight="600">{t.latency}ms</text></>
           {isH&&<Tip x={ex+8} y={ey-10}>
             <div style={{fontWeight:700,color:tc,marginBottom:4}}>{t.name}</div>
             <div style={{color:"#64748b",fontSize:11}}>Provider: {t.provider||"—"}</div>
@@ -210,19 +210,19 @@ const NetworkMap = () => {
           <circle cx={px} cy={py} r={7} fill={tc} opacity={0.18}/>
         </>}
         {/* Src trunk name — left side of line */}
-        <rect x={l1x-32} y={l1y-9} width={64} height={16} rx={8} fill="#fff" stroke={tc} strokeWidth={0.8}/>
+        <rect x={l1x-32} y={l1y-9} width={64} height={16} rx={8} fill="hsl(var(--card))" stroke={tc} strokeWidth={0.8}/>
         <text x={l1x} y={l1y+3} fill={tc} fontSize={8.5} textAnchor="middle" fontFamily="Raleway,sans-serif" fontWeight="700">
           {t.name.length>10?t.name.slice(0,10)+"…":t.name}
         </text>
         {/* Dst (reverse) trunk name — right side */}
         {reverseTrunk&&<>
-          <rect x={l2x-32} y={l2y-9} width={64} height={16} rx={8} fill="#fff" stroke={tc} strokeWidth={0.8}/>
+          <rect x={l2x-32} y={l2y-9} width={64} height={16} rx={8} fill="hsl(var(--card))" stroke={tc} strokeWidth={0.8}/>
           <text x={l2x} y={l2y+3} fill={tc} fontSize={8.5} textAnchor="middle" fontFamily="Raleway,sans-serif" fontWeight="700">
             {reverseTrunk.name.length>10?reverseTrunk.name.slice(0,10)+"…":reverseTrunk.name}
           </text>
         </>}
         {/* Latency badge center */}
-        <rect x={mx-22} y={my-10} width={44} height={16} rx={8} fill="#fff" stroke={tc} strokeWidth={1}/>
+        <rect x={mx-22} y={my-10} width={44} height={16} rx={8} fill="hsl(var(--card))" stroke={tc} strokeWidth={1}/>
         <text x={mx} y={my+2} fill={tc} fontSize={9} textAnchor="middle" fontFamily="Raleway,sans-serif" fontWeight="700">
           {t.latency?`${t.latency}ms`:"SIP"}
         </text>
@@ -266,10 +266,10 @@ const NetworkMap = () => {
         )}
 
         {/* Card shadow */}
-        <circle r={26} fill="rgba(15,23,42,0.06)"/>
+        <circle r={26} fill="hsl(var(--muted) / 0.5)"/>
 
         {/* Main circle */}
-        <circle r={24} fill="#fff" stroke={nc} strokeWidth={isDrag||isH?2.5:1.5}/>
+        <circle r={24} fill="hsl(var(--card))" stroke={nc} strokeWidth={isDrag||isH?2.5:1.5}/>
 
         {/* Inner fill */}
         <circle r={20} fill={nc} opacity={0.08}/>
@@ -280,7 +280,7 @@ const NetworkMap = () => {
         <circle cx={0} cy={4} r={2} fill={nc}/>
 
         {/* Status dot */}
-        <circle cx={16} cy={-16} r={4} fill={nc} stroke="#fff" strokeWidth={1.5}>
+        <circle cx={16} cy={-16} r={4} fill={nc} stroke="hsl(var(--card))" strokeWidth={1.5}>
           {ipbx.status==="online"&&<animate attributeName="opacity" values="1;0.3;1" dur="1.5s" repeatCount="indefinite"/>}
         </circle>
 
@@ -296,11 +296,11 @@ const NetworkMap = () => {
           <Tip x={28} y={-28}>
             <div style={{fontWeight:700,color:nc,fontSize:13,marginBottom:5}}>{ipbx.name}</div>
             <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:"3px 12px",fontSize:11}}>
-              <span style={{color:"#94a3b8"}}>Statut</span><span style={{fontWeight:600,color:nc}}>{ipbx.status}</span>
-              <span style={{color:"#94a3b8"}}>IP</span><span style={{color:"#334155"}}>{ipbx.ip_address||"—"}</span>
-              <span style={{color:"#94a3b8"}}>Ping</span><span style={{color:"#334155"}}>{ipbx.ping_latency?`${ipbx.ping_latency}ms`:"—"}</span>
-              <span style={{color:"#94a3b8"}}>Trunks</span><span style={{color:"#334155"}}>{nodeTrunks.length}</span>
-              <span style={{color:"#94a3b8"}}>Canaux</span><span style={{color:"#334155"}}>{ch}</span>
+              <span style={{color:"hsl(var(--muted-foreground))"}}>Statut</span><span style={{fontWeight:600,color:nc}}>{ipbx.status}</span>
+              <span style={{color:"hsl(var(--muted-foreground))"}}>IP</span><span style={{color:"hsl(var(--foreground))"}}>{ipbx.ip_address||"—"}</span>
+              <span style={{color:"hsl(var(--muted-foreground))"}}>Ping</span><span style={{color:"hsl(var(--foreground))"}}>{ipbx.ping_latency?`${ipbx.ping_latency}ms`:"—"}</span>
+              <span style={{color:"hsl(var(--muted-foreground))"}}>Trunks</span><span style={{color:"hsl(var(--foreground))"}}>{nodeTrunks.length}</span>
+              <span style={{color:"hsl(var(--muted-foreground))"}}>Canaux</span><span style={{color:"hsl(var(--foreground))"}}>{ch}</span>
             </div>
           </Tip>
         )}
@@ -317,7 +317,7 @@ const NetworkMap = () => {
   ];
 
   const containerStyle: React.CSSProperties = full?{
-    position:"fixed",inset:0,zIndex:9999,background:C.bg,display:"flex",flexDirection:"column",padding:20,
+    position:"fixed",inset:0,zIndex:9999,background:"hsl(var(--background))",display:"flex",flexDirection:"column",padding:20,
   }:{};
 
   return (
@@ -352,7 +352,7 @@ const NetworkMap = () => {
             {I:Maximize2, a:()=>setFull(f=>!f),tip:"Plein écran"},
           ].map(({I,a,tip},i)=>(
             <button key={i} onClick={a} title={tip}
-              style={{width:34,height:34,borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:"0 1px 3px rgba(15,23,42,0.06)"}}>
+              style={{width:34,height:34,borderRadius:8,border:"1px solid hsl(var(--border))",background:"hsl(var(--card))",color:"hsl(var(--muted-foreground))",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.08)"}}>
               <I size={14}/>
             </button>
           ))}
@@ -360,12 +360,12 @@ const NetworkMap = () => {
       </div>
 
       {/* Map */}
-      <div style={{borderRadius:16,overflow:"hidden",border:"1px solid #e2e8f0",background:"#f8fafc",boxShadow:"0 1px 8px rgba(15,23,42,0.06)",position:"relative",flex:full?1:undefined}}>
+      <div style={{borderRadius:16,overflow:"hidden",border:"1px solid hsl(var(--border))",background:"hsl(var(--background))",boxShadow:"0 1px 8px rgba(0,0,0,0.08)",position:"relative",flex:full?1:undefined}}>
         {/* Dot grid */}
         <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",opacity:1}}>
           <defs>
             <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse">
-              <circle cx="1" cy="1" r="1" fill="#cbd5e1" opacity="0.6"/>
+              <circle cx="1" cy="1" r="1" fill="hsl(var(--border))" opacity="0.8"/>
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#dots)"/>
@@ -406,10 +406,10 @@ const NetworkMap = () => {
       {/* Stats row */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10}}>
         {stats.map(s=>(
-          <div key={s.l} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:12,padding:"14px 16px",boxShadow:"0 1px 4px rgba(15,23,42,0.05)"}}>
+          <div key={s.l} style={{background:"hsl(var(--card))",border:"1px solid hsl(var(--border))",borderRadius:12,padding:"14px 16px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
             <p style={{fontSize:10,color:C.muted,fontFamily:"Raleway,sans-serif",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 0 4px"}}>{s.l}</p>
             <p style={{fontSize:24,fontWeight:800,color:s.c,fontFamily:"Raleway,sans-serif",margin:"0 0 2px",lineHeight:1}}>{s.v}</p>
-            <p style={{fontSize:10,color:"#cbd5e1",fontFamily:"Raleway,sans-serif",margin:0}}>{s.sub}</p>
+            <p style={{fontSize:10,color:"hsl(var(--muted-foreground))",fontFamily:"Raleway,sans-serif",margin:0,opacity:0.6}}>{s.sub}</p>
           </div>
         ))}
       </div>
@@ -421,7 +421,7 @@ const NetworkMap = () => {
             <div style={{width:16,height:3,background:x.c,borderRadius:2}}/>{x.l}
           </div>
         ))}
-        <span style={{marginLeft:"auto",fontSize:10,color:"#cbd5e1"}}>Glisser nœuds · Molette zoomer · Drag panoramique</span>
+        <span style={{marginLeft:"auto",fontSize:10,color:"hsl(var(--muted-foreground))"}}>Glisser nœuds · Molette zoomer · Drag panoramique</span>
       </div>
     </div>
     <style>{`@keyframes nmspin{to{transform:rotate(360deg)}}`}</style>
