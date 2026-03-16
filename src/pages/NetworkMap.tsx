@@ -4,7 +4,7 @@ import { useAllowedIpbx } from "@/hooks/useAllowedIpbx";
 import { RefreshCw, ZoomIn, ZoomOut, RotateCcw, Maximize2, Server, Activity } from "lucide-react";
 
 interface IPBX { id:string;name:string;ip_address:string;status:string;ping_latency:number|null; }
-interface SipTrunk { id:string;name:string;ipbx_id:string;remote_ipbx_id:string|null;status:string;latency:number|null;channels:number|null;max_channels:number|null;provider:string|null; }
+interface SipTrunk { id:string;name:string;ipbx_id:string;remote_ipbx_id:string|null;status:string;latency:number|null;channels:number|null;max_channels:number|null;provider:string|null;remote_ip:string|null;local_ip:string|null; }
 interface Pos { x:number;y:number; }
 
 const C = {
@@ -65,9 +65,22 @@ const NetworkMap = () => {
     if(!isAdmin&&allowedIpbxIds?.length) q=q.in("id",allowedIpbxIds);
     else if(!isAdmin&&allowedIpbxIds!==null) q=q.in("id",["00000000-0000-0000-0000-000000000000"]);
     const [r1,r2]=await Promise.all([q,
-      applyFilter(supabase.from("sip_trunks").select("id,name,ipbx_id,remote_ipbx_id,status,latency,channels,max_channels,provider"))]);
+      applyFilter(supabase.from("sip_trunks").select("id,name,ipbx_id,remote_ipbx_id,status,latency,channels,max_channels,provider,remote_ip,local_ip"))]);
     const nodes:IPBX[]=r1.data||[];
-    setIpbxList(nodes); setTrunks(r2.data||[]);
+    const rawTrunks:SipTrunk[]=r2.data||[];
+
+    // Auto-détection des connexions inter-IPBX
+    // Si le remote_ip d'un trunk correspond à l'ip_address d'un autre IPBX → lier
+    const enriched = rawTrunks.map(t => {
+      if(t.remote_ipbx_id) return t;
+      const matchedIpbx = nodes.find(n =>
+        n.id !== t.ipbx_id && n.ip_address &&
+        t.remote_ip && t.remote_ip === n.ip_address
+      );
+      return matchedIpbx ? {...t, remote_ipbx_id: matchedIpbx.id} : t;
+    });
+
+    setIpbxList(nodes); setTrunks(enriched);
     setPos(prev=>{
       const next={...prev};
       if(nodes.some(n=>!next[n.id])){
@@ -128,6 +141,9 @@ const NetworkMap = () => {
     </foreignObject>
   );
 
+  // Track rendered pairs to avoid double lines
+  const renderedPairs = new Set<string>();
+
   const renderTrunks=()=>trunks.map(t=>{
     const src=pos[t.ipbx_id];
     const dst=t.remote_ipbx_id?pos[t.remote_ipbx_id]:null;
@@ -159,27 +175,60 @@ const NetworkMap = () => {
     const px=(1-prog)*(1-prog)*src.x+2*(1-prog)*prog*mx+prog*prog*dst.x;
     const py=(1-prog)*(1-prog)*src.y+2*(1-prog)*prog*my+prog*prog*dst.y;
 
+    // Find reverse trunk (from dst IPBX back to src)
+    const reverseTrunk = trunks.find(rt =>
+      rt.ipbx_id === t.remote_ipbx_id && rt.remote_ipbx_id === t.ipbx_id && rt.id !== t.id
+    );
+    // Skip if reverse was already drawn (avoid duplicate lines)
+    const pairKey = [t.ipbx_id, t.remote_ipbx_id].sort().join("--");
+    if(reverseTrunk && renderedPairs.has(pairKey)) return null;
+    if(reverseTrunk) renderedPairs.add(pairKey);
+    // Label positions: src-side label near src, dst-side label near dst
+    const srcLabelX = src.x+(mx-src.x)*0.3;
+    const srcLabelY = src.y+(my-src.y)*0.3-12;
+    const dstLabelX = dst.x+(mx-dst.x)*0.3;
+    const dstLabelY = dst.y+(my-dst.y)*0.3-12;
+
     return(
       <g key={t.id} onMouseEnter={()=>setHT(t.id)} onMouseLeave={()=>setHT(null)}>
-        {/* Shadow line */}
+        {/* Shadow */}
         <path d={path} fill="none" stroke={tc} strokeWidth={6} strokeOpacity={0.08}/>
         {/* Main line */}
         <path d={path} fill="none" stroke={tc} strokeWidth={isH?2.5:1.5} strokeDasharray={isDash?"8,5":"none"} strokeOpacity={0.85}/>
-        {/* Packet */}
+        {/* Packet animation */}
         {t.status==="up"&&<>
           <circle cx={px} cy={py} r={4} fill={tc} opacity={0.9}/>
-          <circle cx={px} cy={py} r={7} fill={tc} opacity={0.2}/>
+          <circle cx={px} cy={py} r={7} fill={tc} opacity={0.18}/>
         </>}
-        {/* Latency badge */}
+        {/* Src trunk name label */}
+        <rect x={srcLabelX-28} y={srcLabelY-8} width={56} height={14} rx={7} fill="#fff" stroke={tc} strokeWidth={0.8} opacity={0.95}/>
+        <text x={srcLabelX} y={srcLabelY+2} fill={tc} fontSize={8} textAnchor="middle" fontFamily="Raleway,sans-serif" fontWeight="700">
+          {t.name.length>9?t.name.slice(0,9)+"…":t.name}
+        </text>
+        {/* Dst (reverse) trunk name label */}
+        {reverseTrunk&&<>
+          <rect x={dstLabelX-28} y={dstLabelY-8} width={56} height={14} rx={7} fill="#fff" stroke={tc} strokeWidth={0.8} opacity={0.95}/>
+          <text x={dstLabelX} y={dstLabelY+2} fill={tc} fontSize={8} textAnchor="middle" fontFamily="Raleway,sans-serif" fontWeight="700">
+            {reverseTrunk.name.length>9?reverseTrunk.name.slice(0,9)+"…":reverseTrunk.name}
+          </text>
+        </>}
+        {/* Latency badge center */}
         <rect x={mx-22} y={my-10} width={44} height={16} rx={8} fill="#fff" stroke={tc} strokeWidth={1}/>
         <text x={mx} y={my+2} fill={tc} fontSize={9} textAnchor="middle" fontFamily="Raleway,sans-serif" fontWeight="700">
-          {t.latency?`${t.latency}ms`:t.name.slice(0,6)}
+          {t.latency?`${t.latency}ms`:"SIP"}
         </text>
-        {isH&&<Tip x={mx+12} y={my-20}>
+        {/* Arrows direction */}
+        <defs>
+          <marker id={`arr-${t.id}`} viewBox="0 0 8 8" refX="6" refY="4" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M1 1L7 4L1 7" fill="none" stroke={tc} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </marker>
+        </defs>
+        {isH&&<Tip x={mx+14} y={my-18}>
           <div style={{fontWeight:700,color:tc,marginBottom:4,fontSize:13}}>{t.name}</div>
           <div style={{color:"#64748b",fontSize:11}}>Statut: <span style={{color:tc,fontWeight:600}}>{t.status.toUpperCase()}</span></div>
           <div style={{color:"#64748b",fontSize:11}}>Latence: {t.latency?`${t.latency}ms`:"—"}</div>
           <div style={{color:"#64748b",fontSize:11}}>Canaux: {t.channels??0}/{t.max_channels??30}</div>
+          {reverseTrunk&&<div style={{color:"#64748b",fontSize:11,marginTop:4,borderTop:"1px solid #f1f5f9",paddingTop:4}}>↩ Retour: {reverseTrunk.name}</div>}
           {t.provider&&<div style={{color:"#64748b",fontSize:11}}>Provider: {t.provider}</div>}
         </Tip>}
       </g>
