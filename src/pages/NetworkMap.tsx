@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAllowedIpbx } from "@/hooks/useAllowedIpbx";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { RefreshCw, ZoomIn, ZoomOut, RotateCcw, Maximize2, Server, Activity, Save, Lock, Unlock, Move } from "lucide-react";
+import { RefreshCw, ZoomIn, ZoomOut, RotateCcw, Maximize2, Server, Activity } from "lucide-react";
 
 interface IPBX { id:string;name:string;ip_address:string;status:string;ping_latency:number|null; }
 interface SipTrunk { id:string;name:string;ipbx_id:string;remote_ipbx_id:string|null;status:string;latency:number|null;channels:number|null;max_channels:number|null;provider:string|null;remote_ip:string|null;local_ip:string|null; }
@@ -46,6 +46,8 @@ const NetworkMap = () => {
   const { toast } = useToast();
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [ctrlPts, setCtrlPts] = useState<Record<string,Pos>>({}); // bezier control points per trunk
+  const [dragCtrl, setDragCtrl] = useState<string|null>(null);
   const [ipbxList,setIpbxList] = useState<IPBX[]>([]);
   const [trunks,setTrunks]     = useState<SipTrunk[]>([]);
   const [pos,setPos]           = useState<Record<string,Pos>>({});
@@ -94,6 +96,8 @@ const NetworkMap = () => {
       .eq("id", "network_map")
       .single();
     const savedPos: Record<string,Pos> = layout?.positions || {};
+    const savedCtrl: Record<string,Pos> = layout?.ctrl_points || {};
+    if(Object.keys(savedCtrl).length) setCtrlPts(savedCtrl);
 
     setPos(prev=>{
       const next={...prev};
@@ -119,6 +123,7 @@ const NetworkMap = () => {
       await supabase.from("map_layouts").upsert({
         id: "network_map",
         positions: pos,
+        ctrl_points: ctrlPts,
         updated_at: new Date().toISOString(),
       }, { onConflict: "id" });
       toast({ title: "Disposition sauvegardée ✓", description: "Les positions ont été enregistrées." });
@@ -143,16 +148,26 @@ const NetworkMap = () => {
   };
   const canDrag = isAdmin && editMode;
 
+  const onCtrlDown = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setDragCtrl(id);
+  };
+
   const onNDown=(e:React.MouseEvent,id:string)=>{
     if(!canDrag) return;
     e.stopPropagation();const p=getSVGPt(e);
     setDrag(id);setDragOff({x:p.x-(pos[id]?.x||0),y:p.y-(pos[id]?.y||0)});
   };
   const onMove=(e:React.MouseEvent)=>{
+    if(dragCtrl) {
+      const p=getSVGPt(e);
+      setCtrlPts(prev=>({...prev,[dragCtrl]:{x:p.x,y:p.y}}));
+      return;
+    }
     if(drag){const p=getSVGPt(e);setPos(prev=>({...prev,[drag]:{x:p.x-dragOff.x,y:p.y-dragOff.y}}));}
     else if(panning)setPan({x:e.clientX-panStart.x,y:e.clientY-panStart.y});
   };
-  const onUp=()=>{setDrag(null);setPanning(false);};
+  const onUp=()=>{setDrag(null);setPanning(false);setDragCtrl(null);};
   const onSDown=(e:React.MouseEvent)=>{
     const t=e.target as SVGElement;
     if(t===svgRef.current||["rect","svg"].includes(t.tagName)){
@@ -205,7 +220,10 @@ const NetworkMap = () => {
       );
     }
 
-    const mx=(src.x+dst.x)/2,my=(src.y+dst.y)/2-50;
+    // Use custom control point if set, else default
+    const defCtrl = {x:(src.x+dst.x)/2, y:(src.y+dst.y)/2-50};
+    const ctrl = ctrlPts[t.id] || defCtrl;
+    const mx=ctrl.x, my=ctrl.y;
     const path=`M ${src.x} ${src.y} Q ${mx} ${my} ${dst.x} ${dst.y}`;
     const prog=((tick*0.003+(t.ipbx_id.charCodeAt(0)*0.07))%1);
     const px=(1-prog)*(1-prog)*src.x+2*(1-prog)*prog*mx+prog*prog*dst.x;
@@ -268,6 +286,13 @@ const NetworkMap = () => {
             <path d="M1 1L7 4L1 7" fill="none" stroke={tc} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </marker>
         </defs>
+        {/* Control point handle — visible in edit mode */}
+        {editMode && isAdmin && (
+          <g onMouseDown={e=>onCtrlDown(e,t.id)} style={{cursor:"grab"}}>
+            <circle cx={mx} cy={my} r={8} fill="hsl(var(--card))" stroke="#0ea5e9" strokeWidth={1.5} strokeDasharray="3,2"/>
+            <circle cx={mx} cy={my} r={3} fill="#0ea5e9"/>
+          </g>
+        )}
         {isH&&<Tip x={mx+14} y={my-18}>
           <div style={{fontWeight:700,color:tc,marginBottom:4,fontSize:13}}>{t.name}</div>
           <div style={{color:"#64748b",fontSize:11}}>Statut: <span style={{color:tc,fontWeight:600}}>{t.status.toUpperCase()}</span></div>
