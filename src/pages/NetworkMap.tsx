@@ -159,7 +159,7 @@ const NetworkMap = () => {
         <g key={t.id} onMouseEnter={()=>setHT(t.id)} onMouseLeave={()=>setHT(null)}>
           <line x1={src.x} y1={src.y} x2={ex} y2={ey} stroke={tc} strokeWidth={isH?2.5:1.5} strokeDasharray={isDash?"7,4":"none"} strokeOpacity={0.7}/>
           <circle cx={ex} cy={ey} r={4} fill={tc} opacity={0.5}/>
-          {t.latency&&<><rect x={(src.x+ex)/2-16} y={(src.y+ey)/2-16} width={32} height={13} rx={6} fill="hsl(var(--card))" stroke={tc} strokeWidth={0.8}/><text x={(src.x+ex)/2} y={(src.y+ey)/2-7} fill={tc} fontSize={8} textAnchor="middle" fontFamily="Raleway,sans-serif" fontWeight="600">{t.latency}ms</text></>
+          {t.latency&&(<><rect x={(src.x+ex)/2-16} y={(src.y+ey)/2-16} width={32} height={13} rx={6} fill="hsl(var(--card))" stroke={tc} strokeWidth={0.8}/><text x={(src.x+ex)/2} y={(src.y+ey)/2-7} fill={tc} fontSize={8} textAnchor="middle" fontFamily="Raleway,sans-serif" fontWeight="600">{t.latency}ms</text></>)}
           {isH&&<Tip x={ex+8} y={ey-10}>
             <div style={{fontWeight:700,color:tc,marginBottom:4}}>{t.name}</div>
             <div style={{color:"#64748b",fontSize:11}}>Provider: {t.provider||"—"}</div>
