@@ -183,11 +183,20 @@ const NetworkMap = () => {
     const pairKey = [t.ipbx_id, t.remote_ipbx_id].sort().join("--");
     if(reverseTrunk && renderedPairs.has(pairKey)) return null;
     if(reverseTrunk) renderedPairs.add(pairKey);
-    // Label positions: src-side label near src, dst-side label near dst
-    const srcLabelX = src.x+(mx-src.x)*0.3;
-    const srcLabelY = src.y+(my-src.y)*0.3-12;
-    const dstLabelX = dst.x+(mx-dst.x)*0.3;
-    const dstLabelY = dst.y+(my-dst.y)*0.3-12;
+    // Compute perpendicular offset to place labels on each side of the line
+    const dx = dst.x - src.x, dy = dst.y - src.y;
+    const len = Math.sqrt(dx*dx+dy*dy)||1;
+    const perpX = -dy/len, perpY = dx/len; // perpendicular unit vector
+    const offset = 28; // pixels away from the line
+
+    // Label 1 (src trunk): 30% along the curve, left side
+    const t1 = 0.3;
+    const l1x = (1-t1)*(1-t1)*src.x+2*(1-t1)*t1*mx+t1*t1*dst.x + perpX*offset;
+    const l1y = (1-t1)*(1-t1)*src.y+2*(1-t1)*t1*my+t1*t1*dst.y + perpY*offset;
+    // Label 2 (dst trunk): 70% along the curve, right side
+    const t2 = 0.7;
+    const l2x = (1-t2)*(1-t2)*src.x+2*(1-t2)*t2*mx+t2*t2*dst.x - perpX*offset;
+    const l2y = (1-t2)*(1-t2)*src.y+2*(1-t2)*t2*my+t2*t2*dst.y - perpY*offset;
 
     return(
       <g key={t.id} onMouseEnter={()=>setHT(t.id)} onMouseLeave={()=>setHT(null)}>
@@ -200,16 +209,16 @@ const NetworkMap = () => {
           <circle cx={px} cy={py} r={4} fill={tc} opacity={0.9}/>
           <circle cx={px} cy={py} r={7} fill={tc} opacity={0.18}/>
         </>}
-        {/* Src trunk name label */}
-        <rect x={srcLabelX-28} y={srcLabelY-8} width={56} height={14} rx={7} fill="#fff" stroke={tc} strokeWidth={0.8} opacity={0.95}/>
-        <text x={srcLabelX} y={srcLabelY+2} fill={tc} fontSize={8} textAnchor="middle" fontFamily="Raleway,sans-serif" fontWeight="700">
-          {t.name.length>9?t.name.slice(0,9)+"…":t.name}
+        {/* Src trunk name — left side of line */}
+        <rect x={l1x-32} y={l1y-9} width={64} height={16} rx={8} fill="#fff" stroke={tc} strokeWidth={0.8}/>
+        <text x={l1x} y={l1y+3} fill={tc} fontSize={8.5} textAnchor="middle" fontFamily="Raleway,sans-serif" fontWeight="700">
+          {t.name.length>10?t.name.slice(0,10)+"…":t.name}
         </text>
-        {/* Dst (reverse) trunk name label */}
+        {/* Dst (reverse) trunk name — right side */}
         {reverseTrunk&&<>
-          <rect x={dstLabelX-28} y={dstLabelY-8} width={56} height={14} rx={7} fill="#fff" stroke={tc} strokeWidth={0.8} opacity={0.95}/>
-          <text x={dstLabelX} y={dstLabelY+2} fill={tc} fontSize={8} textAnchor="middle" fontFamily="Raleway,sans-serif" fontWeight="700">
-            {reverseTrunk.name.length>9?reverseTrunk.name.slice(0,9)+"…":reverseTrunk.name}
+          <rect x={l2x-32} y={l2y-9} width={64} height={16} rx={8} fill="#fff" stroke={tc} strokeWidth={0.8}/>
+          <text x={l2x} y={l2y+3} fill={tc} fontSize={8.5} textAnchor="middle" fontFamily="Raleway,sans-serif" fontWeight="700">
+            {reverseTrunk.name.length>10?reverseTrunk.name.slice(0,10)+"…":reverseTrunk.name}
           </text>
         </>}
         {/* Latency badge center */}
