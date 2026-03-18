@@ -41,6 +41,7 @@ const ALL_VIEWS = [
   { key: "cdr", label: "Appels / CDR", icon: Eye },
   { key: "quality", label: "Qualite VoIP", icon: Eye },
   { key: "alerts", label: "Alertes", icon: Eye },
+  { key: "network_map", label: "Network Map", icon: Globe },
 ];
 
 const UserManagement = () => {
