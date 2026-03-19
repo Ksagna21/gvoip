@@ -56,37 +56,39 @@ const KpiCard = ({ label, value, sub, accent = false, trend = "none", onClick, a
   const trendColor = trend === "up" ? "text-success" : trend === "down" ? "text-destructive" : "text-warning";
   const trendBg   = trend === "up" ? "bg-success/15" : trend === "down" ? "bg-destructive/15" : "bg-warning/15";
 
+  const isHighlighted = accent || active;
+
   return (
     <motion.div
       whileHover={{ y: -2 }}
       transition={{ duration: 0.15 }}
       onClick={onClick}
       className={`
-        relative rounded-2xl p-5 border transition-all duration-200
+        relative rounded-2xl p-5 border transition-all duration-300
         ${onClick ? "cursor-pointer" : ""}
-        ${active ? "ring-2 ring-primary" : ""}
-        ${accent ? "border-primary/60" : "bg-card border-border hover:border-primary/30"}
+        ${isHighlighted ? "border-primary/60" : "bg-card border-border hover:border-primary/30"}
       `}
-      style={accent ? {
+      style={isHighlighted ? {
         background: "linear-gradient(145deg, #0277a8 0%, #0295cc 40%, #04AAEE 75%, #5ed0ff 100%)",
       } : undefined}
     >
-      <div className={`absolute top-4 right-4 w-7 h-7 rounded-full flex items-center justify-center ${accent ? "bg-white/15" : "bg-muted"}`}>
-        <ArrowUpRight size={13} className={accent ? "text-white/80" : "text-muted-foreground"} />
+      <div className={`absolute top-4 right-4 w-7 h-7 rounded-full flex items-center justify-center ${isHighlighted ? "bg-white/15" : "bg-muted"}`}>
+        <ArrowUpRight size={13} className={isHighlighted ? "text-white/80" : "text-muted-foreground"} />
       </div>
-      <p className={`text-[10px] font-bold tracking-widest uppercase mb-3 ${accent ? "text-white/70" : "text-muted-foreground"}`}>
+      <p className={`text-[10px] font-bold tracking-widest uppercase mb-3 ${isHighlighted ? "text-white/70" : "text-muted-foreground"}`}>
         {label}
       </p>
-      <p className={`text-4xl font-black leading-none mb-3 ${accent ? "text-white" : "text-foreground"}`}>
+      <p className={`text-4xl font-black leading-none mb-3 ${isHighlighted ? "text-white" : "text-foreground"}`}>
         {value}
       </p>
       <div className="flex items-center gap-2">
         {trend !== "none" && (
-          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black ${trendBg} ${trendColor}`}>
+          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black
+            ${isHighlighted ? "bg-white/20 text-white" : `${trendBg} ${trendColor}`}`}>
             {trendIcon}
           </span>
         )}
-        <span className={`text-[11px] font-semibold ${accent ? "text-white/75" : "text-muted-foreground"}`}>
+        <span className={`text-[11px] font-semibold ${isHighlighted ? "text-white/75" : "text-muted-foreground"}`}>
           {sub}
         </span>
       </div>
@@ -237,7 +239,7 @@ const CountryDashboard = () => {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <KpiCard label="SIP Trunks" value={trunks.length}
           sub={`${kpis.trunksUp} UP · ${kpis.trunksDown} DOWN`}
-          accent trend={kpis.trunksDown > 0 ? "down" : "up"}
+          trend={kpis.trunksDown > 0 ? "down" : "up"}
           onClick={() => setActiveDetail(activeDetail === "trunks" ? null : "trunks")}
           active={activeDetail === "trunks"} />
         <KpiCard label="Extensions" value={extensions.length}
