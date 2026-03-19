@@ -1,38 +1,31 @@
 import { AppSidebar } from "./AppSidebar";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { Clock } from "lucide-react";
-import { useEffect, useState } from "react";
+import { AppTopbar } from "./AppSidebar";
 
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
 export const AppLayout = ({ children }: AppLayoutProps) => {
-  const [time, setTime] = useState(new Date());
-
-  useEffect(() => {
-    const interval = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
-    <div className="min-h-screen bg-background noc-grid-bg">
+    /* Fond page avec légère texture */
+    <div className="min-h-screen bg-background noc-grid-bg" style={{ fontFamily: "'Raleway', sans-serif" }}>
+
+      {/* Sidebar flottante (fixed, gérée dans AppSidebar) */}
       <AppSidebar />
-      <div className="ml-60">
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 h-11 bg-background/80 backdrop-blur-md border-b border-border flex items-center justify-end px-6 gap-4">
-          <ThemeToggle />
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Clock size={13} />
-            <span className="text-[11px] font-mono">
-              {time.toLocaleDateString("fr-FR")} {time.toLocaleTimeString("fr-FR")}
-            </span>
-          </div>
-          <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-glow" />
+
+      {/* Zone principale — décalée de w-56 (224px) + left-3 (12px) + gap (8px) = 244px */}
+      <div className="ml-[244px] flex flex-col min-h-screen">
+
+        {/* ── Topbar ── */}
+        <header
+          className="sticky top-0 z-30 flex items-center justify-end px-4"
+          style={{ height: "52px" }}
+        >
+          <AppTopbar />
         </header>
 
-        {/* Content */}
-        <main className="p-6">
+        {/* ── Contenu ── */}
+        <main className="flex-1 px-6 pb-10 overflow-y-auto">
           {children}
         </main>
       </div>
