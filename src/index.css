@@ -6,36 +6,43 @@
 
 /* ═══════════════════════════════════════════════════════════════
    PALETTE
-   #EA82B5  rose vif     → HSL 330 72% 71%
-   #001018  noir bleu    → HSL 201 100% 5%
-   #EEB3D1  rose clair   → HSL 330 60% 81%
-   #9EA1A8  gris neutre  → HSL 218 5% 64%
+   #04AAEE  bleu ciel vif  → HSL 199 97% 48%
+   #020202  noir pur       → HSL 0 0% 1%
+   #2C2F32  gris anthracite→ HSL 207 6% 18%
+   #000102  noir absolu    → HSL 210 100% 0.4%
 ═══════════════════════════════════════════════════════════════ */
 
 @layer base {
   :root,
   .light {
-    --background: 220 14% 96%;
-    --foreground: 210 40% 8%;
+    /* ── Fond page — gris très clair neutre ── */
+    --background: 210 14% 96%;
+    --foreground: 207 20% 10%;
 
+    /* ── Cards blanches ── */
     --card: 0 0% 100%;
-    --card-foreground: 210 40% 8%;
+    --card-foreground: 207 20% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 40% 8%;
+    --popover-foreground: 207 20% 10%;
 
-    --primary: 330 72% 71%;
-    --primary-foreground: 210 40% 8%;
+    /* ── Primary = bleu #04AAEE → HSL 199 97% 48% ── */
+    --primary: 199 97% 48%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 330 50% 93%;
-    --secondary-foreground: 330 72% 35%;
+    /* ── Secondary ── */
+    --secondary: 199 60% 92%;
+    --secondary-foreground: 199 97% 25%;
 
-    --muted: 220 13% 94%;
-    --muted-foreground: 218 8% 48%;
+    /* ── Muted = gris anthracite léger ── */
+    --muted: 207 8% 94%;
+    --muted-foreground: 207 6% 46%;
 
-    --accent: 330 50% 95%;
-    --accent-foreground: 330 72% 40%;
+    /* ── Accent ── */
+    --accent: 199 50% 93%;
+    --accent-foreground: 199 97% 25%;
 
+    /* ── Statuts ── */
     --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
 
@@ -45,79 +52,93 @@
     --warning: 38 92% 52%;
     --warning-foreground: 0 0% 100%;
 
-    --info: 200 80% 50%;
+    --info: 199 97% 48%;
     --info-foreground: 0 0% 100%;
 
-    --border: 220 13% 88%;
-    --input: 220 13% 88%;
-    --ring: 330 72% 71%;
+    /* ── Bordures ── */
+    --border: 207 10% 87%;
+    --input: 207 10% 87%;
+    --ring: 199 97% 48%;
 
     --radius: 0.75rem;
 
+    /* ── Sidebar ── */
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 210 40% 20%;
-    --sidebar-primary: 330 72% 65%;
+    --sidebar-foreground: 207 15% 25%;
+    --sidebar-primary: 199 97% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 330 50% 95%;
-    --sidebar-accent-foreground: 330 72% 35%;
-    --sidebar-border: 330 20% 90%;
-    --sidebar-ring: 330 72% 71%;
+    --sidebar-accent: 199 50% 93%;
+    --sidebar-accent-foreground: 199 97% 22%;
+    --sidebar-border: 207 10% 90%;
+    --sidebar-ring: 199 97% 48%;
 
-    --noc-glow: 330 72% 71%;
-    --noc-grid: 330 20% 92%;
+    --noc-glow: 199 97% 48%;
+    --noc-grid: 207 10% 90%;
   }
 
+  /* ══════════════════════════════════════════════════
+     DARK MODE — noir #020202 / #000102, bleu vif
+  ══════════════════════════════════════════════════ */
   .dark {
-    --background: 201 100% 5%;
-    --foreground: 330 30% 92%;
+    /* ── Fond = #000102 quasi-noir absolu ── */
+    --background: 210 100% 1%;
+    --foreground: 199 20% 88%;
 
-    --card: 201 80% 8%;
-    --card-foreground: 330 20% 90%;
+    /* ── Cards = #020202 noir pur ── */
+    --card: 0 0% 2%;
+    --card-foreground: 199 15% 88%;
 
-    --popover: 201 80% 8%;
-    --popover-foreground: 330 20% 90%;
+    --popover: 0 0% 2%;
+    --popover-foreground: 199 15% 88%;
 
-    --primary: 330 72% 75%;
-    --primary-foreground: 201 100% 5%;
+    /* ── Primary = bleu vif légèrement lumineux ── */
+    --primary: 199 97% 52%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 201 60% 12%;
-    --secondary-foreground: 330 30% 80%;
+    /* ── Secondary = gris anthracite #2C2F32 ── */
+    --secondary: 207 6% 18%;
+    --secondary-foreground: 199 20% 82%;
 
-    --muted: 201 50% 11%;
-    --muted-foreground: 218 8% 58%;
+    /* ── Muted légèrement au-dessus du noir ── */
+    --muted: 207 6% 11%;
+    --muted-foreground: 207 6% 52%;
 
-    --accent: 330 35% 16%;
-    --accent-foreground: 330 60% 82%;
+    /* ── Accent ── */
+    --accent: 199 50% 12%;
+    --accent-foreground: 199 97% 70%;
 
+    /* ── Statuts ── */
     --destructive: 0 72% 58%;
     --destructive-foreground: 0 0% 100%;
 
     --success: 152 55% 45%;
-    --success-foreground: 201 100% 5%;
+    --success-foreground: 0 0% 100%;
 
     --warning: 38 92% 58%;
-    --warning-foreground: 201 100% 5%;
+    --warning-foreground: 0 0% 100%;
 
-    --info: 200 80% 58%;
-    --info-foreground: 201 100% 5%;
+    --info: 199 97% 55%;
+    --info-foreground: 0 0% 100%;
 
-    --border: 201 40% 14%;
-    --input: 201 40% 14%;
-    --ring: 330 72% 75%;
+    /* ── Bordures = gris anthracite subtil ── */
+    --border: 207 6% 16%;
+    --input: 207 6% 16%;
+    --ring: 199 97% 52%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 201 100% 4%;
-    --sidebar-foreground: 330 15% 72%;
-    --sidebar-primary: 330 72% 72%;
-    --sidebar-primary-foreground: 201 100% 5%;
-    --sidebar-accent: 330 25% 14%;
-    --sidebar-accent-foreground: 330 40% 88%;
-    --sidebar-border: 201 40% 10%;
-    --sidebar-ring: 330 72% 72%;
+    /* ── Sidebar = noir absolu #000102 ── */
+    --sidebar-background: 210 100% 0.5%;
+    --sidebar-foreground: 199 15% 68%;
+    --sidebar-primary: 199 97% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 199 40% 10%;
+    --sidebar-accent-foreground: 199 60% 80%;
+    --sidebar-border: 207 6% 12%;
+    --sidebar-ring: 199 97% 52%;
 
-    --noc-glow: 330 72% 72%;
-    --noc-grid: 201 40% 10%;
+    --noc-glow: 199 97% 52%;
+    --noc-grid: 207 6% 10%;
   }
 }
 
@@ -138,21 +159,21 @@
 
 @layer utilities {
 
-  /* ── Gradient primaire rose vif → rose clair ── */
-  .bg-primary-gradient {
-    background: linear-gradient(135deg, #c75590 0%, #EA82B5 50%, #EEB3D1 100%);
+  /* ── Gradient KPI accentué — bleu vif → bleu profond ── */
+  .bg-kpi-accent {
+    background: linear-gradient(145deg, #0277a8 0%, #04AAEE 55%, #5ed0ff 100%);
   }
 
-  /* ── Card KPI accentuée (remplace le vert Donezo) ── */
-  .bg-kpi-accent {
-    background: linear-gradient(145deg, #9d2f68 0%, #c75590 40%, #EA82B5 75%, #EEB3D1 100%);
+  /* ── Gradient primary ── */
+  .bg-primary-gradient {
+    background: linear-gradient(135deg, #0277a8 0%, #04AAEE 100%);
   }
 
   /* ── Glow effects ── */
   .noc-glow {
     box-shadow:
-      0 0 20px -5px hsl(var(--primary) / 0.35),
-      0 0 40px -10px hsl(var(--primary) / 0.18);
+      0 0 20px -5px hsl(var(--primary) / 0.4),
+      0 0 40px -10px hsl(var(--primary) / 0.2);
   }
 
   .noc-glow-success {
@@ -168,7 +189,7 @@
   }
 
   .noc-glow-primary {
-    box-shadow: 0 0 18px -4px #EA82B588;
+    box-shadow: 0 0 20px -4px #04AAEE66;
   }
 
   /* ── NOC card light ── */
@@ -178,22 +199,18 @@
   }
 
   .noc-card:hover {
-    box-shadow: 0 4px 20px hsl(330 72% 71% / 0.12);
+    box-shadow: 0 4px 20px hsl(199 97% 48% / 0.12);
   }
 
-  /* ── NOC card dark — profondeur bleue nuit + lueur rose ── */
+  /* ── NOC card dark — noir profond avec lueur bleue subtile ── */
   .dark .noc-card {
-    background: linear-gradient(
-      135deg,
-      hsl(201 80% 9%) 0%,
-      hsl(201 70% 7%) 100%
-    );
-    border-color: hsl(330 30% 18%);
+    background: linear-gradient(135deg, #020202 0%, #0a0c0d 100%);
+    border-color: #2C2F32;
   }
 
   .dark .noc-card:hover {
-    box-shadow: 0 4px 24px #EA82B522;
-    border-color: hsl(330 40% 22%);
+    box-shadow: 0 4px 24px #04AAEE22;
+    border-color: #04AAEE44;
   }
 
   /* ── noc-grid-bg ── */
@@ -211,7 +228,7 @@
     50%       { opacity: 0.5; }
   }
 
-  /* ── Scrollbar rose ── */
+  /* ── Scrollbar bleue ── */
   .scrollbar-thin::-webkit-scrollbar {
     width: 5px;
   }
@@ -227,7 +244,7 @@
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--primary) / 0.7);
+    background: hsl(var(--primary) / 0.75);
   }
 
   /* ── Fix calendrier dark ── */
@@ -243,6 +260,6 @@
 
   /* ── Sélection texte ── */
   ::selection {
-    background: #EA82B540;
+    background: #04AAEE33;
   }
 }
