@@ -62,9 +62,12 @@ const KpiCard = ({ label, value, sub, accent = false, trend = "none", to }: KpiP
         className={`
           relative rounded-2xl p-5 border transition-all duration-200 cursor-pointer
           ${accent
-            ? "bg-[#1A4D2E] border-[#1A4D2E]"
+            ? "border-[#1A4D2E]"
             : "bg-card border-border hover:border-primary/30 dark:hover:border-primary/40"}
         `}
+        style={accent ? {
+          background: "linear-gradient(145deg, #1a3d28 0%, #1e5c35 40%, #2d7a4a 75%, #3a9460 100%)",
+        } : undefined}
       >
         {/* Arrow top-right */}
         <div className={`
@@ -264,7 +267,7 @@ const Dashboard = () => {
   const ROW3_H = 200; // px — Trunks list, MOS chart, Alertes
 
   return (
-    <div className="space-y-4" style={{ fontFamily: "'Raleway', sans-serif" }}>
+    <div className="space-y-4 pb-8" style={{ fontFamily: "'Raleway', sans-serif" }}>
 
       {/* ── En-tête ──────────────────────────────────────────── */}
       <div>
