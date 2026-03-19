@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr" class="dark">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,15 +8,25 @@
     <meta name="author" content="GVoIP" />
     <meta name="author" content="SKJ Server Team" />
 
-    <!-- TODO: Update og:title to match your application name -->
-    <!-- <meta property="og:title" content="Lovable App" />
-    <meta property="og:description" content="Lovable Generated Project" />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@Lovable" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" /> -->
+    <!-- ── Persistance du thème — DOIT être en premier ──────────
+         Applique le bon thème AVANT que React charge,
+         évite tout flash de couleur au refresh.
+    ──────────────────────────────────────────────────────────── -->
+    <script>
+      (function () {
+        var stored = localStorage.getItem('theme');
+        if (stored === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else if (stored === 'light') {
+          document.documentElement.classList.remove('dark');
+        } else {
+          // Aucune préférence sauvegardée → utiliser la préférence système
+          if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+          }
+        }
+      })();
+    </script>
   </head>
 
   <body>
