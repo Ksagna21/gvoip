@@ -9,14 +9,11 @@ import {
   Activity,
   Bell,
   Shield,
-  Radio,
   Globe,
   Server,
   Users,
-  Settings,
   LogOut,
   Map,
-  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -48,9 +45,7 @@ const AppSidebar = () => {
       {/* ── Logo ─────────────────────────────────────────────── */}
       <div className="px-5 py-5 border-b border-border">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#1A4D2E] flex items-center justify-center shrink-0">
-            <img src="/GVOIP.png" alt="GVoIP" className="w-6 h-6 object-contain" />
-          </div>
+          <img src="/GVOIP.png" alt="GVoIP" className="w-9 h-9 object-contain shrink-0" />
           <h1
             className="text-lg font-black text-foreground tracking-wide"
             style={{ fontFamily: "'Raleway', sans-serif" }}
@@ -152,27 +147,6 @@ const AppSidebar = () => {
           </div>
         )}
       </nav>
-
-      {/* ── Encart "App Mobile" style Donezo ─────────────────── */}
-      <div className="mx-3 mb-3 rounded-2xl p-4 bg-[#1A4D2E] overflow-hidden relative">
-        {/* Décorations cercles */}
-        <span className="absolute -right-4 -bottom-4 w-16 h-16 rounded-full bg-white/5 pointer-events-none" />
-        <span className="absolute right-6 -top-6 w-12 h-12 rounded-full bg-white/4 pointer-events-none" />
-
-        <p className="text-[12px] font-black text-white leading-tight mb-1">
-          Téléchargez<br />notre App Mobile
-        </p>
-        <p className="text-[10px] text-white/60 font-medium mb-3">
-          Accès facile en mobilité
-        </p>
-        <button
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black text-white transition-colors"
-          style={{ background: "#4CAF7D" }}
-        >
-          <Download size={11} />
-          Télécharger
-        </button>
-      </div>
 
       {/* ── Footer ───────────────────────────────────────────── */}
       <div className="px-4 py-3 border-t border-border space-y-2">
