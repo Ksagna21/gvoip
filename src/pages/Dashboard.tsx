@@ -125,16 +125,21 @@ const Donut = ({ pct, color = "#1A4D2E" }: { pct: number; color?: string }) => {
   const r = 52;
   const circ = 2 * Math.PI * r;
   const dash = circ * Math.min(pct / 100, 1);
+  const id = `donut-grad-${Math.round(pct)}`;
   return (
     <svg width={130} height={130} viewBox="0 0 130 130">
-      {/* Track — utilise stroke-muted via Tailwind impossible en SVG direct :
-          on utilise une couleur semi-transparente compatible light/dark */}
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%"   stopColor="#3a9460" />
+          <stop offset="100%" stopColor="#1a3d28" />
+        </linearGradient>
+      </defs>
       <circle cx="65" cy="65" r={r} fill="none"
         stroke="currentColor" strokeWidth={13}
         className="text-muted-foreground/20" />
       <circle
         cx="65" cy="65" r={r}
-        fill="none" stroke={color} strokeWidth={13}
+        fill="none" stroke={`url(#${id})`} strokeWidth={13}
         strokeDasharray={`${dash} ${circ - dash}`}
         strokeLinecap="round"
         transform="rotate(-90 65 65)"
@@ -303,11 +308,17 @@ const Dashboard = () => {
             {callVolume.length > 0 ? (
               <ResponsiveContainer width="100%" height={ROW2_H}>
                 <BarChart data={callVolume} barCategoryGap="40%" margin={{ top: 0, right: 4, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%"   stopColor="#3a9460" />
+                      <stop offset="100%" stopColor="#1a3d28" />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid {...chartGrid} />
                   <XAxis dataKey="h" tick={chartTick} axisLine={false} tickLine={false} />
                   <YAxis tick={chartTick} axisLine={false} tickLine={false} />
                   <Tooltip content={<ChartTooltip />} />
-                  <Bar dataKey="entrants" name="Appels" fill="#1A4D2E" radius={[5, 5, 0, 0]} />
+                  <Bar dataKey="entrants" name="Appels" fill="url(#barGradient)" radius={[5, 5, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -396,8 +407,8 @@ const Dashboard = () => {
                 <AreaChart data={qualityData} margin={{ top: 0, right: 4, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="mosFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#1A4D2E" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#1A4D2E" stopOpacity={0}   />
+                      <stop offset="0%"   stopColor="#3a9460" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#1a3d28" stopOpacity={0}    />
                     </linearGradient>
                   </defs>
                   <CartesianGrid {...chartGrid} />
@@ -405,7 +416,7 @@ const Dashboard = () => {
                   <YAxis domain={[1, 5]} tick={chartTick} axisLine={false} tickLine={false} />
                   <Tooltip content={<ChartTooltip />} />
                   <Area type="monotone" dataKey="mos" name="MOS"
-                    stroke="#1A4D2E" fill="url(#mosFill)" strokeWidth={2.5} dot={false} />
+                    stroke="#2d7a4a" fill="url(#mosFill)" strokeWidth={2.5} dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
