@@ -66,7 +66,7 @@ const KpiCard = ({ label, value, sub, accent = false, trend = "none", to }: KpiP
             : "bg-card border-border hover:border-primary/30 dark:hover:border-primary/40"}
         `}
         style={accent ? {
-          background: "linear-gradient(145deg, hsl(var(--primary)) 0%, #1e5c35 40%, hsl(var(--primary)) 75%, hsl(330 60% 81%) 100%)",
+          background: "linear-gradient(145deg, #9d2f68 0%, #c75590 40%, #EA82B5 75%, #EEB3D1 100%)",
         } : undefined}
       >
         {/* Arrow top-right */}
@@ -378,8 +378,8 @@ const Dashboard = () => {
                   className="flex items-center justify-between px-3 py-2 rounded-xl bg-muted/40 dark:bg-muted/20 hover:bg-muted/60 dark:hover:bg-muted/30 transition-colors">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className="w-2 h-2 rounded-full shrink-0" style={{
-                      background: trunk.status === "up" ? "hsl(var(--success))" : "#E05C5C",
-                      boxShadow: `0 0 5px ${trunk.status === "up" ? "hsl(152 55% 45% / 0.5)" : "#E05C5C88"}`,
+                      background: trunk.status === "up" ? "hsl(var(--primary))" : "#E05C5C",
+                      boxShadow: `0 0 5px ${trunk.status === "up" ? "hsl(330 72% 71% / 0.6)" : "#E05C5C88"}`,
                     }} />
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-foreground font-mono truncate">{trunk.name}</p>
@@ -387,8 +387,8 @@ const Dashboard = () => {
                     </div>
                   </div>
                   <span className="text-[9px] font-black uppercase px-2.5 py-1 rounded-full shrink-0 ml-2" style={{
-                    background: trunk.status === "up" ? "rgba(76,175,125,.15)" : "rgba(224,92,92,.15)",
-                    color: trunk.status === "up" ? "hsl(var(--success))" : "#E05C5C",
+                    background: trunk.status === "up" ? "hsl(330 72% 71% / 0.15)" : "rgba(224,92,92,.15)",
+                    color: trunk.status === "up" ? "hsl(var(--primary))" : "#E05C5C",
                   }}>
                     {trunk.status}
                   </span>
