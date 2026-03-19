@@ -15,7 +15,7 @@
 @layer base {
   :root,
   .light {
-    --background: 330 25% 97%;
+    --background: 220 14% 96%;
     --foreground: 210 40% 8%;
 
     --card: 0 0% 100%;
@@ -30,7 +30,7 @@
     --secondary: 330 50% 93%;
     --secondary-foreground: 330 72% 35%;
 
-    --muted: 218 10% 95%;
+    --muted: 220 13% 94%;
     --muted-foreground: 218 8% 48%;
 
     --accent: 330 50% 95%;
@@ -48,8 +48,8 @@
     --info: 200 80% 50%;
     --info-foreground: 0 0% 100%;
 
-    --border: 330 20% 88%;
-    --input: 330 20% 88%;
+    --border: 220 13% 88%;
+    --input: 220 13% 88%;
     --ring: 330 72% 71%;
 
     --radius: 0.75rem;
