@@ -49,9 +49,11 @@ interface KpiProps {
   trend?: "up" | "down" | "warn" | "none";
   onClick?: () => void;
   active?: boolean;
+  icon?: React.ReactNode;
+  iconColor?: string;
 }
 
-const KpiCard = ({ label, value, sub, accent = false, trend = "none", onClick, active }: KpiProps) => {
+const KpiCard = ({ label, value, sub, accent = false, trend = "none", onClick, active, icon, iconColor }: KpiProps) => {
   const trendIcon = trend === "down" ? "↓" : trend === "warn" ? "!" : "↑";
   const trendColor = trend === "up" ? "text-success" : trend === "down" ? "text-destructive" : "text-warning";
   const trendBg   = trend === "up" ? "bg-success/15" : trend === "down" ? "bg-destructive/15" : "bg-warning/15";
@@ -72,8 +74,17 @@ const KpiCard = ({ label, value, sub, accent = false, trend = "none", onClick, a
         background: "linear-gradient(145deg, #0277a8 0%, #0295cc 40%, #04AAEE 75%, #5ed0ff 100%)",
       } : undefined}
     >
-      <div className={`absolute top-4 right-4 w-7 h-7 rounded-full flex items-center justify-center ${isHighlighted ? "bg-white/15" : "bg-muted"}`}>
-        <ArrowUpRight size={13} className={isHighlighted ? "text-white/80" : "text-muted-foreground"} />
+      <div
+        className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center"
+        style={icon && iconColor
+          ? { background: isHighlighted ? "rgba(255,255,255,0.15)" : `${iconColor}22` }
+          : { background: isHighlighted ? "rgba(255,255,255,0.15)" : "hsl(var(--muted))" }
+        }
+      >
+        {icon
+          ? <span style={{ color: isHighlighted ? "rgba(255,255,255,0.85)" : iconColor }}>{icon}</span>
+          : <ArrowUpRight size={13} className={isHighlighted ? "text-white/80" : "text-muted-foreground"} />
+        }
       </div>
       <p className={`text-[10px] font-bold tracking-widest uppercase mb-3 ${isHighlighted ? "text-white/70" : "text-muted-foreground"}`}>
         {label}
@@ -241,26 +252,32 @@ const CountryDashboard = () => {
           sub={`${kpis.trunksUp} UP · ${kpis.trunksDown} DOWN`}
           trend={kpis.trunksDown > 0 ? "down" : "up"}
           onClick={() => setActiveDetail(activeDetail === "trunks" ? null : "trunks")}
-          active={activeDetail === "trunks"} />
+          active={activeDetail === "trunks"}
+          icon={<Network size={15} />} iconColor="#E05C5C" />
         <KpiCard label="Extensions" value={extensions.length}
           sub={`${kpis.extOnline} en ligne`} trend="up"
           onClick={() => setActiveDetail(activeDetail === "extensions" ? null : "extensions")}
-          active={activeDetail === "extensions"} />
+          active={activeDetail === "extensions"}
+          icon={<Phone size={15} />} iconColor="hsl(186 97% 42%)" />
         <KpiCard label="Appels actifs" value={kpis.activeCalls}
           sub="En cours" trend="up"
           onClick={() => setActiveDetail(activeDetail === "calls" ? null : "calls")}
-          active={activeDetail === "calls"} />
+          active={activeDetail === "calls"}
+          icon={<PhoneCall size={15} />} iconColor="hsl(var(--success))" />
         <KpiCard label="MOS moyen"
           value={kpis.avgMos > 0 ? kpis.avgMos.toFixed(1) : "—"}
           sub={kpis.avgMos >= 4 ? "Qualité bonne" : kpis.avgMos > 0 ? "Dégradée" : "Pas de données"}
-          trend={kpis.avgMos >= 4 ? "up" : kpis.avgMos > 0 ? "warn" : "none"} />
+          trend={kpis.avgMos >= 4 ? "up" : kpis.avgMos > 0 ? "warn" : "none"}
+          icon={<Gauge size={15} />} iconColor="hsl(var(--success))" />
         <KpiCard label="Latence moy."
           value={kpis.avgLatency > 0 ? `${kpis.avgLatency}ms` : "—"}
-          sub="SIP Trunks" trend="none" />
+          sub="SIP Trunks" trend="none"
+          icon={<Activity size={15} />} iconColor="hsl(199 97% 48%)" />
         <KpiCard label="Alertes" value={kpis.unackAlerts}
           sub="Non acquittées" trend={kpis.unackAlerts > 0 ? "down" : "none"}
           onClick={() => setActiveDetail(activeDetail === "alerts" ? null : "alerts")}
-          active={activeDetail === "alerts"} />
+          active={activeDetail === "alerts"}
+          icon={<AlertTriangle size={15} />} iconColor="#F5A623" />
       </div>
 
       {/* ── Detail Panel ────────────────────────────────────── */}
