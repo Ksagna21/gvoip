@@ -343,6 +343,26 @@ const CountryDashboard = () => {
                         placeholder="Rechercher…" className="pl-8 h-8 text-xs w-48 rounded-xl" />
                     </div>
                   )}
+                  {/* Pagination inline — alerts uniquement */}
+                  {activeDetail === "alerts" && alertPageCount > 1 && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-muted-foreground font-semibold mr-1">
+                        {alertPage * ALERTS_PER_PAGE + 1}–{Math.min((alertPage + 1) * ALERTS_PER_PAGE, filteredDetailAlerts.length)}/{filteredDetailAlerts.length}
+                      </span>
+                      <button disabled={alertPage === 0} onClick={() => setAlertPage(p => p - 1)}
+                        className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground hover:bg-muted/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">‹</button>
+                      {Array.from({ length: alertPageCount }).map((_, i) => (
+                        <button key={i} onClick={() => setAlertPage(i)}
+                          className="w-7 h-7 rounded-lg text-[10px] font-black transition-colors"
+                          style={i === alertPage
+                            ? { background: "hsl(var(--primary))", color: "white" }
+                            : { background: "hsl(var(--muted))", color: "hsl(var(--muted-foreground))" }
+                          }>{i + 1}</button>
+                      ))}
+                      <button disabled={alertPage === alertPageCount - 1} onClick={() => setAlertPage(p => p + 1)}
+                        className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground hover:bg-muted/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">›</button>
+                    </div>
+                  )}
                   <button onClick={() => { setActiveDetail(null); setDetailSearch(""); }}
                     className="w-7 h-7 rounded-xl bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors">
                     <X size={13} className="text-muted-foreground" />
@@ -464,56 +484,51 @@ const CountryDashboard = () => {
                   <div className="space-y-2 mb-4">
                     {pagedAlerts.length === 0
                       ? <p className="text-center text-muted-foreground text-sm py-6">Aucune alerte</p>
-                      : pagedAlerts.map((alert, i) => (
-                        <motion.div key={alert.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
-                          className="flex gap-2.5 px-3 py-2.5 rounded-xl bg-muted/40 dark:bg-muted/20">
-                          <span className="w-2 h-2 rounded-full mt-1.5 shrink-0"
-                            style={{ background: alert.type === "critical" ? "hsl(var(--destructive))" : "hsl(var(--warning))" }} />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="text-xs font-bold text-foreground truncate">{alert.title}</p>
-                              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full shrink-0"
-                                style={{
-                                  background: alert.type === "critical" ? "rgba(224,92,92,.15)" : "rgba(245,166,35,.15)",
-                                  color: alert.type === "critical" ? "hsl(var(--destructive))" : "hsl(var(--warning))",
-                                }}>
-                                {alert.type || "info"}
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-muted-foreground truncate">{alert.message}</p>
-                            <p className="text-[9px] text-muted-foreground font-mono mt-0.5">{new Date(alert.created_at).toLocaleString("fr-FR")}</p>
-                          </div>
-                        </motion.div>
-                      ))
+                      : pagedAlerts.map((alert, i) => {
+                          const isInfo     = !alert.type || alert.type === "info";
+                          const isCritical = alert.type === "critical";
+                          const dotColor   = isInfo ? "hsl(199 97% 48%)" : isCritical ? "hsl(var(--destructive))" : "#F5A623";
+                          const badgeBg    = isInfo ? "rgba(4,170,238,.15)" : isCritical ? "rgba(224,92,92,.15)" : "rgba(245,166,35,.15)";
+                          const badgeColor = isInfo ? "hsl(199 97% 48%)" : isCritical ? "hsl(var(--destructive))" : "#F5A623";
+                          return (
+                            <motion.div key={alert.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
+                              className="flex gap-2.5 px-3 py-2.5 rounded-xl bg-muted/40 dark:bg-muted/20">
+                              <span className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: dotColor }} />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-xs font-bold text-foreground truncate">{alert.title}</p>
+                                  <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full shrink-0"
+                                    style={{ background: badgeBg, color: badgeColor }}>
+                                    {alert.type || "info"}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground truncate">{alert.message}</p>
+                                <p className="text-[9px] text-muted-foreground font-mono mt-0.5">{new Date(alert.created_at).toLocaleString("fr-FR")}</p>
+                              </div>
+                            </motion.div>
+                          );
+                        })
                     }
                   </div>
-                  {/* Pagination */}
+                  {/* Pagination bas */}
                   {alertPageCount > 1 && (
                     <div className="flex items-center justify-between pt-2 border-t border-border/50">
                       <span className="text-[10px] text-muted-foreground font-semibold">
                         {alertPage * ALERTS_PER_PAGE + 1}–{Math.min((alertPage + 1) * ALERTS_PER_PAGE, filteredDetailAlerts.length)} sur {filteredDetailAlerts.length} alerte(s)
                       </span>
                       <div className="flex items-center gap-1">
-                        <button
-                          disabled={alertPage === 0}
-                          onClick={() => setAlertPage(p => p - 1)}
-                          className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground hover:bg-muted/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                        >‹</button>
+                        <button disabled={alertPage === 0} onClick={() => setAlertPage(p => p - 1)}
+                          className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground hover:bg-muted/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">‹</button>
                         {Array.from({ length: alertPageCount }).map((_, i) => (
                           <button key={i} onClick={() => setAlertPage(i)}
                             className="w-7 h-7 rounded-lg text-[10px] font-black transition-colors"
                             style={i === alertPage
                               ? { background: "hsl(var(--primary))", color: "white" }
                               : { background: "hsl(var(--muted))", color: "hsl(var(--muted-foreground))" }
-                            }>
-                            {i + 1}
-                          </button>
+                            }>{i + 1}</button>
                         ))}
-                        <button
-                          disabled={alertPage === alertPageCount - 1}
-                          onClick={() => setAlertPage(p => p + 1)}
-                          className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground hover:bg-muted/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                        >›</button>
+                        <button disabled={alertPage === alertPageCount - 1} onClick={() => setAlertPage(p => p + 1)}
+                          className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground hover:bg-muted/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">›</button>
                       </div>
                     </div>
                   )}
