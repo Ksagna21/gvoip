@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from socketserver import ThreadingMixIn
+
+class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
+    daemon_threads = True
 import json, subprocess, logging, os, socket, threading, time, queue
 from urllib.parse import urlparse, parse_qs
 
@@ -295,4 +299,4 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     logging.info("API server démarré sur port 8081")
-    HTTPServer(("0.0.0.0", 8081), Handler).serve_forever()
+    ThreadingHTTPServer(("0.0.0.0", 8081), Handler).serve_forever()
