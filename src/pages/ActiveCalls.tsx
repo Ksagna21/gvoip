@@ -427,6 +427,12 @@ const ActiveCalls = () => {
               ipbx: { name: ipbxMap[event.ipbx_id] || "—" },
             } as Call, ...prev];
           });
+        } else if (event.type === "call_update") {
+          setCalls(prev => prev.map(c =>
+            c.trunk_name === event.uniqueid
+              ? { ...c, caller_name: event.caller_name, callee_name: event.callee_name }
+              : c
+          ));
         } else if (event.type === "call_end") {
           setCalls(prev => prev.filter(c => c.trunk_name !== event.uniqueid));
         }
