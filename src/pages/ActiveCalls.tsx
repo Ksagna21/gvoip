@@ -338,12 +338,7 @@ const ActiveCalls = () => {
   const [dateTo, setDateTo] = useState("");
   const [cdrStats, setCdrStats] = useState({ total: 0, answered: 0, missed: 0, totalDuration: 0, avgDuration: 0 });
 
-  const { applyFilter, allowedIpbxIds, isAdmin: isAdminUser } = useAllowedIpbx();
-
-  // true uniquement quand le hook a fini de charger les permissions :
-  // - admin : isAdminUser suffit (pas besoin d'allowedIpbxIds)
-  // - non-admin : allowedIpbxIds !== null signifie que le fetch Supabase est termine
-  const isReady = isAdminUser || allowedIpbxIds !== null;
+  const { applyFilter, allowedIpbxIds, isAdmin: isAdminUser, ready } = useAllowedIpbx();
 
   // ── Appels actifs depuis Supabase ─────────────────────────────────────────
   const fetchCalls = useCallback(async () => {
@@ -355,14 +350,15 @@ const ActiveCalls = () => {
     setLastUpdate(new Date());
   }, [applyFilter]);
 
-  // Ne demarre le fetch qu'une fois les permissions resolues — elimine
-  // le double aller-retour qui causait l'affichage tardif des donnees.
+  // Attend que useAllowedIpbx soit entierement resolu (ready) avant le premier fetch.
+  // Evite le double aller-retour : premierement avec des permissions nulles,
+  // puis une seconde fois avec les vraies donnees.
   useEffect(() => {
-    if (!isReady) return;
+    if (!ready) return;
     fetchCalls();
     const interval = setInterval(fetchCalls, 10000);
     return () => clearInterval(interval);
-  }, [fetchCalls, isReady]);
+  }, [fetchCalls, ready]);
 
   useEffect(() => {
     const timer = setInterval(() => setTick(t => t + 1), 1000);
