@@ -389,57 +389,55 @@ const ActiveCalls = () => {
   const [selectedCdr, setSelectedCdr] = useState<CDR | null>(null);
   const [ipbxList, setIpbxList] = useState<IPBX[]>([]);
 
-  // ── SSE : abonnement temps réel aux appels via chaque IPBX bridge ──────────
+  // ── SSE : abonnement temps réel — une seule connexion au serveur gvoip ──────
+  // L'api-server tourne uniquement sur le serveur gvoip (même host que l'app),
+  // pas sur chaque IPBX. On utilise window.location.hostname pour pointer dessus.
   useEffect(() => {
     if (!ipbxList.length) return;
-    const sources: EventSource[] = [];
 
-    ipbxList.forEach(ipbx => {
-      const ip = ipbx.ip_address || ipbx.host;
-      if (!ip) return;
-      const url = `http://${ip}:8081/api/events?ipbx_id=${ipbx.id}`;
-      const es = new EventSource(url);
+    // Un seul EventSource sur le serveur gvoip — reçoit les events de tous les IPBX
+    const bridgeHost = window.location.hostname;
+    const url = `http://${bridgeHost}:8081/api/events?ipbx_id=all`;
+    const es = new EventSource(url);
 
-      es.onmessage = (e) => {
-        try {
-          const event = JSON.parse(e.data);
-          if (event.type === "call_start") {
-            // Ajouter immédiatement sans attendre Supabase
-            setCalls(prev => {
-              if (prev.find(c => c.trunk_name === event.uniqueid)) return prev;
-              return [{
-                id: event.uniqueid,
-                caller: event.caller,
-                caller_name: event.caller_name,
-                callee: event.callee,
-                callee_name: event.callee_name,
-                status: "active",
-                started_at: event.started_at,
-                ended_at: null,
-                duration: null,
-                codec: event.codec,
-                mos: null,
-                jitter: null,
-                trunk_name: event.uniqueid,
-                ipbx_id: event.ipbx_id,
-                ipbx: { name: ipbx.name },
-              } as Call, ...prev];
-            });
-          } else if (event.type === "call_end") {
-            setCalls(prev => prev.filter(c => c.trunk_name !== event.uniqueid));
-          }
-        } catch {}
-      };
+    // Map ipbx_id -> nom pour enrichir les events SSE
+    const ipbxMap = Object.fromEntries(ipbxList.map(i => [i.id, i.name]));
 
-      // Ne pas fermer sur erreur — EventSource reconnecte automatiquement
-      // Fermer uniquement au démontage du composant (cleanup ci-dessous)
-      es.onerror = () => {
-        // log silencieux, la reconnexion est gérée nativement par le navigateur
-      };
-      sources.push(es);
-    });
+    es.onmessage = (e) => {
+      try {
+        const event = JSON.parse(e.data);
+        if (event.type === "call_start") {
+          setCalls(prev => {
+            if (prev.find(c => c.trunk_name === event.uniqueid)) return prev;
+            return [{
+              id: event.uniqueid,
+              caller: event.caller,
+              caller_name: event.caller_name,
+              callee: event.callee,
+              callee_name: event.callee_name,
+              status: "active",
+              started_at: event.started_at,
+              ended_at: null,
+              duration: null,
+              codec: event.codec,
+              mos: null,
+              jitter: null,
+              trunk_name: event.uniqueid,
+              ipbx_id: event.ipbx_id,
+              ipbx: { name: ipbxMap[event.ipbx_id] || "—" },
+            } as Call, ...prev];
+          });
+        } else if (event.type === "call_end") {
+          setCalls(prev => prev.filter(c => c.trunk_name !== event.uniqueid));
+        }
+      } catch {}
+    };
 
-    return () => sources.forEach(es => es.close());
+    es.onerror = () => {
+      // Reconnexion automatique gérée par le navigateur
+    };
+
+    return () => es.close();
   }, [ipbxList]);
 
   // Filtres CDR
