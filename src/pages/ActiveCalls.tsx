@@ -431,7 +431,11 @@ const ActiveCalls = () => {
         } catch {}
       };
 
-      es.onerror = () => es.close();
+      // Ne pas fermer sur erreur — EventSource reconnecte automatiquement
+      // Fermer uniquement au démontage du composant (cleanup ci-dessous)
+      es.onerror = () => {
+        // log silencieux, la reconnexion est gérée nativement par le navigateur
+      };
       sources.push(es);
     });
 
