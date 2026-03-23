@@ -149,7 +149,18 @@ const SipLadderDiagram = ({ uniqueid, calldate }: { uniqueid: string; calldate: 
         const res = await supabase.from("sip_flows").select("*").gte("created_at", from).lte("created_at", to).order("created_at", { ascending: true }).limit(100);
         data = res.data;
       }
-      setFlows(data || []);
+      // Filtrer les paquets RTCP/RTP (payload JSON) et ne garder que les vrais messages SIP
+      const SIP_METHODS = new Set(["INVITE","ACK","BYE","CANCEL","OPTIONS","REGISTER",
+        "PRACK","SUBSCRIBE","NOTIFY","PUBLISH","INFO","REFER","MESSAGE","UPDATE"]);
+      const isSip = (f: SipFlow) => {
+        if (f.payload?.trimStart().startsWith("{")) return false; // payload JSON = RTCP
+        if (/^\d+$/.test(f.method)) {
+          const code = parseInt(f.method);
+          return code >= 100 && code <= 699; // codes SIP valides uniquement
+        }
+        return SIP_METHODS.has(f.method?.toUpperCase());
+      };
+      setFlows((data || []).filter(isSip));
       setLoading(false);
     };
     load();
