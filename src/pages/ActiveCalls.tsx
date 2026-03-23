@@ -1,5 +1,5 @@
 import { useAllowedIpbx } from "@/hooks/useAllowedIpbx";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge } from "@/components/noc/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -340,28 +340,37 @@ const ActiveCalls = () => {
 
   const { applyFilter, allowedIpbxIds, isAdmin: isAdminUser } = useAllowedIpbx();
 
-  // ── Appels actifs depuis Supabase (inchangé) ──────────────────────────────
-  const fetchCalls = async () => {
-    const { data, error } = await applyFilter(supabase.from("calls").select("*, ipbx(name)").eq("status", "active")).order("started_at", { ascending: false });
+  // ── Appels actifs depuis Supabase ─────────────────────────────────────────
+  // useCallback garantit que fetchCalls se re-crée uniquement quand applyFilter
+  // change (= quand allowedIpbxIds / isAdminUser sont résolus).
+  const fetchCalls = useCallback(async () => {
+    const { data, error } = await applyFilter(
+      supabase.from("calls").select("*, ipbx(name)").eq("status", "active")
+    ).order("started_at", { ascending: false });
     if (!error && data) setCalls(data as Call[]);
     setLoadingCalls(false);
     setLastUpdate(new Date());
-  };
+  }, [applyFilter]);
 
+  // Lance le fetch dès que fetchCalls change (= dès que les droits sont résolus)
   useEffect(() => {
     fetchCalls();
     const interval = setInterval(fetchCalls, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchCalls]);
 
   useEffect(() => {
     const timer = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  // Ref pour eviter la closure perimee dans l'abonnement realtime
+  const fetchCallsRef = useRef(fetchCalls);
+  useEffect(() => { fetchCallsRef.current = fetchCalls; }, [fetchCalls]);
+
   useEffect(() => {
     const channel = supabase.channel("calls-rt")
-      .on("postgres_changes", { event: "*", schema: "public", table: "calls" }, fetchCalls)
+      .on("postgres_changes", { event: "*", schema: "public", table: "calls" }, () => fetchCallsRef.current())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
@@ -548,8 +557,21 @@ const ActiveCalls = () => {
           </div>
           <p className="text-xs text-muted-foreground">Mise à jour : {lastUpdate.toLocaleTimeString()}</p>
           <div className="grid gap-3">
-            {loadingCalls ? (
-              <div className="noc-card p-8 text-center border border-border"><p className="text-muted-foreground text-sm">Chargement...</p></div>
+            {loadingCalls && calls.length === 0 ? (
+              // Skeleton non-bloquant : montre la structure immédiatement
+              [1, 2, 3].map(k => (
+                <div key={k} className="noc-card border border-border p-4 animate-pulse">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="h-5 w-16 rounded bg-muted/40" />
+                      <div className="h-4 w-32 rounded bg-muted/40" />
+                    </div>
+                    <div className="flex gap-5">
+                      {[1,2,3,4].map(j => <div key={j} className="h-8 w-14 rounded bg-muted/40" />)}
+                    </div>
+                  </div>
+                </div>
+              ))
             ) : calls.length === 0 ? (
               <div className="noc-card p-12 text-center border border-border">
                 <Phone className="mx-auto text-muted-foreground mb-3" size={40} />
