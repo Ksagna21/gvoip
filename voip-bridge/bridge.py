@@ -45,9 +45,10 @@ def notify_sse(event: dict):
             headers={"Content-Type": "application/json"},
             method="POST"
         )
-        urllib.request.urlopen(req, timeout=1)
-    except Exception:
-        pass  # SSE non critique — ne bloque pas
+        urllib.request.urlopen(req, timeout=2)
+        logging.info(f"SSE notify OK: {event.get('type')} ipbx={event.get('ipbx_id','')[:8]}")
+    except Exception as e:
+        logging.warning(f"SSE notify FAILED: {e}")
 
 # Initialisation Supabase
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
