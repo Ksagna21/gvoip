@@ -35,20 +35,22 @@ logging.basicConfig(
 )
 
 def notify_sse(event: dict):
-    """Notifie l'api-server local pour diffuser via SSE."""
-    try:
-        import urllib.request
-        body = json.dumps(event).encode()
-        req = urllib.request.Request(
-            "http://127.0.0.1:8081/api/notify",
-            data=body,
-            headers={"Content-Type": "application/json"},
-            method="POST"
-        )
-        urllib.request.urlopen(req, timeout=2)
-        logging.info(f"SSE notify OK: {event.get('type')} ipbx={event.get('ipbx_id','')[:8]}")
-    except Exception as e:
-        logging.warning(f"SSE notify FAILED: {e}")
+    """Notifie l'api-server via un thread daemon — ne bloque JAMAIS le thread AMI."""
+    def _send():
+        try:
+            import urllib.request
+            body = json.dumps(event).encode()
+            req = urllib.request.Request(
+                "http://127.0.0.1:8081/api/notify",
+                data=body,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            urllib.request.urlopen(req, timeout=3)
+            logging.info(f"SSE notify OK: {event.get('type')} ipbx={event.get('ipbx_id','')[:8]}")
+        except Exception as e:
+            logging.warning(f"SSE notify FAILED: {e}")
+    threading.Thread(target=_send, daemon=True).start()
 
 # Initialisation Supabase
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -646,11 +648,12 @@ def main():
             logging.error(f"Erreur boucle principale: {e}")
 
         # Nettoyage toutes les heures
-        if int(time.time()) % 3600 < 60:
+        if int(time.time()) % 3600 < 10:
             cleanup_old_alerts()
             cleanup_quality_metrics()
             cleanup_sip_flows()
 
-        time.sleep(60)
+        time.sleep(10)  # Vérifie les threads AMI toutes les 10s au lieu de 60s
+                        # Reconnexion rapide si un IPBX coupe la connexion
 
 if __name__ == "__main__": main()

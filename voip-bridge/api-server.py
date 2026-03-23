@@ -12,29 +12,29 @@ _sse_clients: dict[str, list[queue.Queue]] = {}  # ipbx_id -> [Queue]
 _sse_lock = threading.Lock()
 
 def sse_broadcast(ipbx_id: str, event: dict):
-    """Envoie un événement SSE aux clients de cet IPBX ET au canal global 'all'."""
+    """Envoie un événement SSE aux clients de cet IPBX ET au canal global 'all'.
+    Thread-safe, résistant aux clients morts et aux queues pleines."""
     data = f"data: {json.dumps(event)}\n\n"
     with _sse_lock:
-        # Envoyer aux abonnés de cet IPBX + au canal global "all"
-        targets = list(set(_sse_clients.get(ipbx_id, []) + _sse_clients.get("all", [])))
-        dead = []
+        # Fusionner les abonnés IPBX-spécifiques + canal global "all"
+        targets = list({id(q): q for q in
+            _sse_clients.get(ipbx_id, []) + _sse_clients.get("all", [])
+        }.values())
+        dead = set()
         for q in targets:
             try:
                 q.put_nowait(data)
             except queue.Full:
-                dead.append(q)
-        for q in dead:
-            for ch in _sse_clients.values():
-                if q in ch:
-                    ch.remove(q)
+                # Queue pleine = client lent ou déconnecté
+                dead.add(id(q))
+        if dead:
+            # Nettoyer les queues mortes de tous les canaux
+            for ch_id, clients in _sse_clients.items():
+                _sse_clients[ch_id] = [q for q in clients if id(q) not in dead]
 
 def sse_broadcast_all(event: dict):
-    """Envoie un événement à tous les clients toutes IPBX confondues."""
-    with _sse_lock:
-        for clients in _sse_clients.values():
-            for q in clients:
-                try: q.put_nowait(f"data: {json.dumps(event)}\n\n")
-                except queue.Full: pass
+    """Alias maintenu pour compatibilité — sse_broadcast gère déjà le canal 'all'."""
+    sse_broadcast("__none__", event)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
