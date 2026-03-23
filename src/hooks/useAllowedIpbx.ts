@@ -8,30 +8,31 @@ export const useAllowedIpbx = () => {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const fetch = async () => {
+    const load = async () => {
       setReady(false);
       if (isAdmin) { setAllowedIpbxIds(null); setReady(true); return; }
-      if (!user) { setAllowedIpbxIds([]); setReady(true); return; }
+      if (!user)   { setAllowedIpbxIds([]);   setReady(true); return; }
 
-      // 1. IPBX via pays assignés
-      const { data: uc } = await supabase.from("user_countries").select("country_id").eq("user_id", user.id);
-      const countryIds = uc?.map((c: any) => c.country_id) || [];
+      // user_countries et user_ipbx partent en parallele — gain ~1-2s
+      const [{ data: uc }, { data: ui }] = await Promise.all([
+        supabase.from("user_countries").select("country_id").eq("user_id", user.id),
+        supabase.from("user_ipbx" as any).select("ipbx_id").eq("user_id", user.id),
+      ]);
+
+      const countryIds   = uc?.map((c: any) => c.country_id) || [];
+      const ipbxDirect: string[] = (ui as any)?.map((i: any) => i.ipbx_id) || [];
+
+      // 3e requete seulement si l'utilisateur a des pays assignes
       let ipbxFromCountries: string[] = [];
       if (countryIds.length > 0) {
         const { data: ipbxData } = await supabase.from("ipbx").select("id").in("country_id", countryIds);
         ipbxFromCountries = ipbxData?.map((i: any) => i.id) || [];
       }
 
-      // 2. IPBX assignés directement via user_ipbx
-      const { data: ui } = await supabase.from("user_ipbx" as any).select("ipbx_id").eq("user_id", user.id);
-      const ipbxDirect: string[] = (ui as any)?.map((i: any) => i.ipbx_id) || [];
-
-      // Union des deux listes (dédoublonnée)
-      const merged = Array.from(new Set([...ipbxFromCountries, ...ipbxDirect]));
-      setAllowedIpbxIds(merged);
+      setAllowedIpbxIds(Array.from(new Set([...ipbxFromCountries, ...ipbxDirect])));
       setReady(true);
     };
-    fetch();
+    load();
   }, [isAdmin, user]);
 
   const applyFilter = useCallback((query: any) => {
