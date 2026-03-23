@@ -8,18 +8,21 @@ _sse_clients: dict[str, list[queue.Queue]] = {}  # ipbx_id -> [Queue]
 _sse_lock = threading.Lock()
 
 def sse_broadcast(ipbx_id: str, event: dict):
-    """Envoie un événement SSE à tous les clients abonnés à cet IPBX."""
+    """Envoie un événement SSE aux clients de cet IPBX ET au canal global 'all'."""
     data = f"data: {json.dumps(event)}\n\n"
     with _sse_lock:
-        clients = _sse_clients.get(ipbx_id, [])
+        # Envoyer aux abonnés de cet IPBX + au canal global "all"
+        targets = list(set(_sse_clients.get(ipbx_id, []) + _sse_clients.get("all", [])))
         dead = []
-        for q in clients:
+        for q in targets:
             try:
                 q.put_nowait(data)
             except queue.Full:
                 dead.append(q)
         for q in dead:
-            clients.remove(q)
+            for ch in _sse_clients.values():
+                if q in ch:
+                    ch.remove(q)
 
 def sse_broadcast_all(event: dict):
     """Envoie un événement à tous les clients toutes IPBX confondues."""
@@ -206,9 +209,10 @@ class Handler(BaseHTTPRequestHandler):
 
         # ── SSE : flux temps réel des appels ─────────────────────────────
         elif parsed.path == "/api/events":
-            ipbx_id = params.get("ipbx_id", [""])[0]
+            ipbx_id = params.get("ipbx_id", ["all"])[0]
             q = queue.Queue(maxsize=100)
             with _sse_lock:
+                # "all" = canal global qui reçoit tous les events de tous les IPBX
                 _sse_clients.setdefault(ipbx_id, []).append(q)
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
