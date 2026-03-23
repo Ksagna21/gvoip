@@ -35,7 +35,8 @@ logging.basicConfig(
 )
 
 def notify_sse(event: dict):
-    """Notifie l'api-server local pour diffuser via SSE — fire and forget."""    try:
+    """Notifie l'api-server local pour diffuser via SSE."""
+    try:
         import urllib.request
         body = json.dumps(event).encode()
         req = urllib.request.Request(

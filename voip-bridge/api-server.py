@@ -218,7 +218,7 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             # Ping initial pour confirmer la connexion
             try:
-                self.wfile.write(b"data: {"type":"connected"}\n\n")
+                self.wfile.write(b'data: {"type":"connected"}\n\n')
                 self.wfile.flush()
             except: pass
             try:
