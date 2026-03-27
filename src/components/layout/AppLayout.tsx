@@ -7,8 +7,8 @@ interface AppLayoutProps {
 export const AppLayout = ({ children }: AppLayoutProps) => {
   return (
     /* Fond page avec légère texture */
-    <div className="min-h-screen bg-white dark:bg-transparent relative" style={{ fontFamily: "Raleway, sans-serif" }}>
-      <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",opacity:1}}>
+    <div className="overflow-y-scroll [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] transition-all duration-300 max-h-screen bg-white flex dark:bg-transparent relative" style={{ fontFamily: "Raleway, sans-serif" }}>
+      <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",opacity:1, zIndex:0}}>
           <defs>
             <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse">
               <circle cx="1" cy="1" r="1" fill="hsl(var(--border))" opacity="0.8"/>
@@ -21,7 +21,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
 
       {/* Zone principale — décalée selon l'écran */}
       {/* Desktop: ml-[244px] (w-56 + left-3*2 + gap), Mobile: tête fixe, pas de décalage */}
-      <div className="md:ml-[250px] flex flex-col min-h-screen bg-white dark:bg-transparent">
+      <div className="flex flex-1 w-full flex-col min-h-screen z-10">
 
         {/* ── Topbar (visible toujours, mobile burger, desktop time) ── */}
         <header
@@ -32,7 +32,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         </header>
 
         {/* ── Contenu ── */}
-        <main className="flex-1 px-4 md:px-6 pb-10 pt-6 overflow-y-auto lg:mx-32 md:mx-16 sm:mx-8 mx-0 bg-white dark:bg-transparent">
+        <main className="flex-1 px-4 md:px-6 z-10 pb-10 pt-6 overflow-y-auto mx-0 bg-transparent dark:bg-transparent">
           {children}
         </main>
       </div>

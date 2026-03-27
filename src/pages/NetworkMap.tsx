@@ -18,7 +18,7 @@ const C = {
   text:    "hsl(var(--foreground))",
   muted:   "hsl(var(--muted-foreground))",
   border:  "hsl(var(--border))",
-  bg:      "hsl(var(--background))",
+  // bg:      "hsl(var(--background))",
   card:    "hsl(var(--card))",
   teal:    "#0d9488",
 };
@@ -397,7 +397,7 @@ const NetworkMap = () => {
   ];
 
   const containerStyle: React.CSSProperties = full?{
-    position:"fixed",inset:0,zIndex:9999,background:"hsl(var(--background))",display:"flex",flexDirection:"column",padding:20,
+    inset:0,zIndex:9999,display:"flex",flexDirection:"column",
   }:{};
 
   return (
@@ -408,7 +408,7 @@ const NetworkMap = () => {
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
         <div>
           <h1 style={{fontSize:20,fontWeight:700,color:C.text,fontFamily:"Raleway,sans-serif",display:"flex",alignItems:"center",gap:8,margin:0}}>
-            <Activity size={18} color={C.teal}/> Carte réseaus
+            <Activity size={18} color={C.teal}/> Carte réseau
           </h1>
           <p style={{fontSize:12,color:C.muted,fontFamily:"Raleway,sans-serif",margin:0}}>Topologie VoIP en temps réel</p>
         </div>
@@ -428,7 +428,6 @@ const NetworkMap = () => {
             <button onClick={()=>setEditMode(e=>!e)} title={editMode?"Verrouiller":"Éditer positions"}
               style={{display:"flex",alignItems:"center",gap:6,padding:"0 12px",height:34,borderRadius:8,
                 border:`1px solid ${editMode?"#0ea5e9":"hsl(var(--border))"}`,
-                background:editMode?"#eff6ff":"hsl(var(--card))",
                 color:editMode?"#0ea5e9":"hsl(var(--muted-foreground))",
                 fontFamily:"Raleway,sans-serif",fontSize:12,fontWeight:600,cursor:"pointer"}}>
               {editMode?<><Unlock size={13}/> Mode édition</>:<><Lock size={13}/> Positions</>}
@@ -469,7 +468,7 @@ const NetworkMap = () => {
       </div>
 
       {/* Map */}
-      <div style={{borderRadius:16,overflow:"hidden",position:"relative",flex:full?1:undefined}} className="mt-4 md:h-[50rem]">
+      <div style={{borderRadius:16,overflow:"hidden",position:"relative",flex:full?1:undefined}} className="mt-4">
         {/* Edit mode banner */}
         {editMode && isAdmin && (
           <div style={{position:"absolute",top:10,left:"50%",transform:"translateX(-50%)",zIndex:3,
@@ -480,14 +479,14 @@ const NetworkMap = () => {
           </div>
         )}
         {/* Dot grid */}
-        <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",opacity:1}}>
+        {/* <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",opacity:1}}>
           <defs>
             <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse">
               <circle cx="1" cy="1" r="1" fill="hsl(var(--border))" opacity="0.8"/>
             </pattern>
           </defs>
           <rect width="100%" height="100%" fill="url(#dots)"/>
-        </svg>
+        </svg> */}
 
         {loading&&!ipbxList.length?(
           <div style={{height:460,display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
@@ -504,7 +503,7 @@ const NetworkMap = () => {
             </div>
           </div>
         ):(
-          <svg ref={svgRef} width="100%" height={full?"calc(100vh - 250px)":460}
+          <svg ref={svgRef} width="100%" height={full?"calc(100vh - 400px)":650}
             viewBox={`0 0 ${W} ${H}`}
             style={{cursor:panning?"grabbing":"default",position:"relative",zIndex:1}}
             onMouseMove={onMove} onMouseUp={onUp} onMouseLeave={onUp}

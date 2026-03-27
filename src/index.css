@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Raleway:wght@300;400;500;600;700;800;900&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Raleway:wght@300;400;500;600;700;800;900&display=swap');
 
 /* ═══════════════════════════════════════════════════════════════
    PALETTE
@@ -252,19 +252,57 @@
     }
   }
 
-  /* ── Scrollbar bleue ── */
+  /* ── SCROLLBAR CUSTOM FIN & BLEU — Global + Specificities ── */
+  
+  /* Styles CSS standard (Firefox 64+, Chrome 121+) */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.5) hsl(var(--muted));
+  }
+
+  /* WebKit (Chrome, Safari, Edge) — Scrollbars fins & bleus */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.5);
+    border-radius: 10px;
+    border: 2px solid hsl(var(--background));
+    background-clip: padding-box;
+    transition: background 0.2s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.8);
+    background-clip: padding-box;
+  }
+
+  /* ── Variante scrollbar-thin (si utilisée explicitement) ── */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.5) transparent;
+  }
+
   .scrollbar-thin::-webkit-scrollbar {
     width: 5px;
+    height: 5px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-track {
-    background: hsl(var(--muted));
-    border-radius: 99px;
+    background: transparent;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
     background: hsl(var(--primary) / 0.4);
     border-radius: 99px;
+    border: none;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {

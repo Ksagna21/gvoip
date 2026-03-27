@@ -77,7 +77,7 @@ export const AppTopbar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
   });
 
   return (
-    <div className="h-14 flex items-center justify-between px-4 bg-white dark:bg-transparent backdrop-blur-lg z-50">
+    <div className="h-14 flex items-center justify-between px-4 bg-transparent dark:bg-transparent z-50">
       {/* Menu burger mobile */}
       {isMobile && (
         <button
@@ -90,7 +90,7 @@ export const AppTopbar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
 
       <div className="flex-1 flex items-center justify-end gap-3">
         {/* Date & Heure */}
-        <div className="hidden sm:flex items-center gap-3 px-4 py-1.5 bg-white dark:bg-transparent border border-border/70 rounded-2xl shadow-sm">
+        <div className="hidden sm:flex items-center gap-3 px-4 py-1.5 bg-transparent dark:bg-transparent">
           <div className="flex items-center gap-2 text-muted-foreground">
             {/* <div className="w-4 h-4 rounded-md border border-current flex items-center justify-center">
               <span className="text-[10px]">📅</span>
@@ -98,11 +98,10 @@ export const AppTopbar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
             <span className="text-xs font-mono font-semibold tracking-widest">{dateStr}</span>
           </div>
 
-          <div className="w-px h-4 bg-border" />
+          {/* <div className="w-px h-4 bg-border" /> */}
 
           <div className="flex items-center gap-2 font-mono text-sm font-semibold text-foreground">
             {timeStr}
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           </div>
         </div>
 
@@ -110,8 +109,8 @@ export const AppTopbar = ({ onMenuClick }: { onMenuClick?: () => void }) => {
         <button
           onClick={toggle}
           className={cn(
-            "w-9 h-9 flex items-center justify-center rounded-2xl border border-border/70 bg-card",
-            "hover:border-primary/30 hover:bg-accent active:scale-95 transition-all duration-200"
+            "w-9 h-9 flex items-center justify-center",
+            "active:scale-95 transition-all duration-200"
           )}
           title={dark ? "Passer en mode clair" : "Passer en mode sombre"}
         >
@@ -226,7 +225,7 @@ const SidebarContent = ({ isCollapsed, onCollapse }: { isCollapsed: boolean; onC
                     key={item.to}
                     to={item.to}
                     className={cn(
-                      "group flex items-center gap-3.5 px-4 py-3.5 rounded-2xl text-sm font-medium transition-all duration-200",
+                      "group flex items-center gap-3.5 px-4 py-3.5 rounded-2xl text-sm font-medium transition-all duration-200 relative overflow-hidden",
                       isActive
                         ? "text-primary bg-primary/10 shadow-sm"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
@@ -305,7 +304,7 @@ const DesktopSidebar = () => {
 
   return (
     <aside
-      className="hidden md:flex fixed top-0 left-0 bottom-0 z-40 flex-col bg-card shadow-xl overflow-hidden transition-all duration-300 dark:border-r dark:border-white/10"
+      className="hidden md:flex z-40 flex-col bg-card shadow-xl overflow-y-scroll [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] transition-all duration-300 max-h-screen"
       style={{ width: isCollapsed ? "78px" : "248px" }}
     >
       <SidebarContent isCollapsed={isCollapsed} onCollapse={() => setIsCollapsed(!isCollapsed)} />
@@ -361,7 +360,7 @@ export const AppSidebar = () => {
       <MobileSidebar isOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
 
       {/* Topbar mobile uniquement */}
-      <div className="fixed top-0 left-0 right-0 z-50 md:hidden bg-background/95 backdrop-blur-lg">
+      <div className="fixed top-0 left-0 right-0 z-50 md:hidden backdrop-blur-lg">
         <AppTopbar onMenuClick={() => setMobileOpen((prev) => !prev)} />
       </div>
     </>
