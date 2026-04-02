@@ -1,3 +1,4 @@
+import { ProfileProvider } from "@/contexts/ProfileContext";
 import { AppSidebar, AppTopbar } from "./AppSidebar";
 
 interface AppLayoutProps {
@@ -6,7 +7,7 @@ interface AppLayoutProps {
 
 export const AppLayout = ({ children }: AppLayoutProps) => {
   return (
-    /* Fond page avec légère texture */
+    <ProfileProvider>
     <div className="overflow-y-scroll [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] transition-all duration-300 max-h-screen bg-white flex dark:bg-transparent relative" style={{ fontFamily: "Manrope, sans-serif" }}>
       <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",opacity:1, zIndex:0}}>
           <defs>
@@ -37,5 +38,6 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         </main>
       </div>
     </div>
+    </ProfileProvider>
   );
 };
