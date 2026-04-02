@@ -17,6 +17,7 @@ import Alerts from "./pages/Alerts";
 import Countries from "./pages/Countries";
 import IPBXManagement from "./pages/IPBXManagement";
 import UserManagement from "./pages/UserManagement";
+import Profile from "./pages/Profile";
 import CountryDashboard from "./pages/CountryDashboard";
 import NetworkMap from "./pages/NetworkMap";
 import Auth from "./pages/Auth";
@@ -88,6 +89,7 @@ const ProtectedRoutes = () => {
         <Route path="/ipbx" element={<Guard view="settings" element={<IPBXManagement />} />} />
         <Route path="/network-map" element={<Guard view="network_map" element={<NetworkMap />} />} />
         <Route path="/users" element={<UserManagement />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppLayout>

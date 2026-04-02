@@ -19,6 +19,7 @@ import {
   Server,
   Sun,
   Users,
+  UserCircle2,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -143,6 +144,7 @@ const SidebarContent = ({ isCollapsed, onCollapse }: { isCollapsed: boolean; onC
     { to: "/quality", icon: Activity, label: "Qualité VoIP", show: canView("quality"), section: "general" },
     { to: "/alerts", icon: Bell, label: "Alertes", show: canView("alerts"), section: "general" },
     { to: "/users", icon: Users, label: "Utilisateurs", show: isAdmin, section: "general" },
+    { to: "/profile", icon: UserCircle2, label: "Mon profil", show: true, section: "general" },
   ];
 
   const menuItems = navItems.filter((i) => i.show && i.section === "menu");
