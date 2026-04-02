@@ -55,7 +55,7 @@ const Extensions = () => {
   const busyCount = extensions.filter(e => e.status === "busy").length;
 
   return (
-    <div className="space-y-5 pb-8" style={{ fontFamily: "Raleway, sans-serif" }}>
+    <div className="space-y-5 pb-8" style={{ fontFamily: "Manrope, sans-serif" }}>
 
       {/* ── En-tête ─────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4">

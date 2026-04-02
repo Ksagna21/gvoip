@@ -21,9 +21,8 @@ import {
 } from "recharts";
 
 /* ─────────────────────────────────────────────────────────────────
-   NOTE : ajoute dans ton index.css (ou global CSS) :
-   @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700;800;900&display=swap');
-   body { font-family: Raleway, sans-serif; }
+   NOTE : la police globale est définie dans index.css
+   via la famille Manrope.
 ───────────────────────────────────────────────────────────────── */
 
 /* ── Recharts custom tooltip — s'adapte light/dark via Tailwind ── */
@@ -283,7 +282,7 @@ const Dashboard = () => {
   const ROW3_H = 200; // px — Trunks list, MOS chart, Alertes
 
   return (
-    <div className="space-y-4 pb-8" style={{ fontFamily: "Raleway, sans-serif" }}>
+    <div className="space-y-4 pb-8" style={{ fontFamily: "Manrope, sans-serif" }}>
 
       {/* ── En-tête ──────────────────────────────────────────── */}
       <div>

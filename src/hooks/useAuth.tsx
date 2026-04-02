@@ -47,7 +47,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const admin = roles.includes("admin");
     setIsAdmin(admin);
     setIsActive(admin || profileRes.data?.is_active !== false);
-    setForcePasswordChange(!admin && profileRes.data?.force_password_change === true);
+    // Enforce first-login password change for every user when flagged.
+    setForcePasswordChange(profileRes.data?.force_password_change === true);
     setViewPermissions(admin ? ["all"] : (permRes.data?.map((p: any) => p.permission) || []));
     setAuthReady(true);
   };

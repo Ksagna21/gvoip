@@ -186,7 +186,7 @@ const NetworkMap = () => {
   // Tooltip component
   const Tip=({x,y,children}:{x:number;y:number;children:React.ReactNode})=>(
     <foreignObject x={x} y={y} width={190} height={130} style={{overflow:"visible"}}>
-      <div style={{background:"hsl(var(--card))",border:"1px solid hsl(var(--border))",borderRadius:10,padding:"10px 14px",fontSize:12,color:"hsl(var(--foreground))",boxShadow:"0 8px 24px rgba(0,0,0,0.18)",whiteSpace:"nowrap",width:"fit-content",fontFamily:"Raleway,sans-serif"}}>
+      <div style={{background:"hsl(var(--card))",border:"1px solid hsl(var(--border))",borderRadius:10,padding:"10px 14px",fontSize:12,color:"hsl(var(--foreground))",boxShadow:"0 8px 24px rgba(0,0,0,0.18)",whiteSpace:"nowrap",width:"fit-content",fontFamily:"Manrope,sans-serif"}}>
         {children}
       </div>
     </foreignObject>
@@ -229,7 +229,7 @@ const NetworkMap = () => {
         <g key={t.id} onMouseEnter={()=>setHT(t.id)} onMouseLeave={()=>setHT(null)}>
           <line x1={src.x} y1={src.y} x2={ex} y2={ey} stroke={tc} strokeWidth={isH?2.5:1.5} strokeDasharray={isDash?"7,4":"none"} strokeOpacity={0.7}/>
           <circle cx={ex} cy={ey} r={4} fill={tc} opacity={0.5}/>
-          {t.latency&&(<><rect x={(src.x+ex)/2-16} y={(src.y+ey)/2-16} width={32} height={13} rx={6} fill="hsl(var(--card))" stroke={tc} strokeWidth={0.8}/><text x={(src.x+ex)/2} y={(src.y+ey)/2-7} fill={tc} fontSize={8} textAnchor="middle" fontFamily="Raleway,sans-serif" fontWeight="600">{t.latency}ms</text></>)}
+          {t.latency&&(<><rect x={(src.x+ex)/2-16} y={(src.y+ey)/2-16} width={32} height={13} rx={6} fill="hsl(var(--card))" stroke={tc} strokeWidth={0.8}/><text x={(src.x+ex)/2} y={(src.y+ey)/2-7} fill={tc} fontSize={8} textAnchor="middle" fontFamily="Manrope,sans-serif" fontWeight="600">{t.latency}ms</text></>)}
           {isH&&<Tip x={ex+8} y={ey-10}>
             <div style={{fontWeight:700,color:tc,marginBottom:4}}>{t.name}</div>
             <div style={{color:"#64748b",fontSize:11}}>Provider: {t.provider||"—"}</div>
@@ -284,19 +284,19 @@ const NetworkMap = () => {
         </>}
         {/* Src trunk name — left side of line */}
         <rect x={l1x-32} y={l1y-9} width={64} height={16} rx={8} fill="hsl(var(--card))" stroke={tc} strokeWidth={0.8}/>
-        <text x={l1x} y={l1y+3} fill={tc} fontSize={8.5} textAnchor="middle" fontFamily="Raleway,sans-serif" fontWeight="700">
+        <text x={l1x} y={l1y+3} fill={tc} fontSize={8.5} textAnchor="middle" fontFamily="Manrope,sans-serif" fontWeight="700">
           {t.name.length>10?t.name.slice(0,10)+"…":t.name}
         </text>
         {/* Dst (reverse) trunk name — right side */}
         {reverseTrunk&&<>
           <rect x={l2x-32} y={l2y-9} width={64} height={16} rx={8} fill="hsl(var(--card))" stroke={tc} strokeWidth={0.8}/>
-          <text x={l2x} y={l2y+3} fill={tc} fontSize={8.5} textAnchor="middle" fontFamily="Raleway,sans-serif" fontWeight="700">
+          <text x={l2x} y={l2y+3} fill={tc} fontSize={8.5} textAnchor="middle" fontFamily="Manrope,sans-serif" fontWeight="700">
             {reverseTrunk.name.length>10?reverseTrunk.name.slice(0,10)+"…":reverseTrunk.name}
           </text>
         </>}
         {/* Latency badge center */}
         <rect x={mx-22} y={my-10} width={44} height={16} rx={8} fill="hsl(var(--card))" stroke={tc} strokeWidth={1}/>
-        <text x={mx} y={my+2} fill={tc} fontSize={9} textAnchor="middle" fontFamily="Raleway,sans-serif" fontWeight="700">
+        <text x={mx} y={my+2} fill={tc} fontSize={9} textAnchor="middle" fontFamily="Manrope,sans-serif" fontWeight="700">
           {t.latency?`${t.latency}ms`:"SIP"}
         </text>
         {/* Arrows direction */}
@@ -365,10 +365,10 @@ const NetworkMap = () => {
         </circle>
 
         {/* Name */}
-        <text y={34} textAnchor="middle" fontSize={11} fill={C.text} fontFamily="Raleway,sans-serif" fontWeight="700">{ipbx.name}</text>
-        <text y={46} textAnchor="middle" fontSize={8.5} fill={C.muted} fontFamily="Raleway,sans-serif">{ipbx.ip_address||"—"}</text>
+        <text y={34} textAnchor="middle" fontSize={11} fill={C.text} fontFamily="Manrope,sans-serif" fontWeight="700">{ipbx.name}</text>
+        <text y={46} textAnchor="middle" fontSize={8.5} fill={C.muted} fontFamily="Manrope,sans-serif">{ipbx.ip_address||"—"}</text>
         {ipbx.ping_latency&&(
-          <text y={56} textAnchor="middle" fontSize={8} fill={nc} fontFamily="Raleway,sans-serif" fontWeight="600">{ipbx.ping_latency}ms</text>
+          <text y={56} textAnchor="middle" fontSize={8} fill={nc} fontFamily="Manrope,sans-serif" fontWeight="600">{ipbx.ping_latency}ms</text>
         )}
 
         {/* Hover card */}
@@ -407,10 +407,10 @@ const NetworkMap = () => {
       {/* Header */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
         <div>
-          <h1 style={{fontSize:20,fontWeight:700,color:C.text,fontFamily:"Raleway,sans-serif",display:"flex",alignItems:"center",gap:8,margin:0}}>
+          <h1 style={{fontSize:20,fontWeight:700,color:C.text,fontFamily:"Manrope,sans-serif",display:"flex",alignItems:"center",gap:8,margin:0}}>
             <Activity size={18} color={C.teal}/> Carte réseau
           </h1>
-          <p style={{fontSize:12,color:C.muted,fontFamily:"Raleway,sans-serif",margin:0}}>Topologie VoIP en temps réel</p>
+          <p style={{fontSize:12,color:C.muted,fontFamily:"Manrope,sans-serif",margin:0}}>Topologie VoIP en temps réel</p>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
           {/* Status pills */}
@@ -419,7 +419,7 @@ const NetworkMap = () => {
             {l:`${offline} offline`,bg:"#fff1f2",c:"#e11d48",border:"#fecdd3",show:offline>0},
             {l:`${tUp}/${tUp+tDown} trunks`,bg:"#eff6ff",c:"#2563eb",border:"#bfdbfe",show:true},
           ].filter(x=>x.show).map(x=>(
-            <div key={x.l} style={{background:x.bg,border:`1px solid ${x.border}`,color:x.c,borderRadius:20,padding:"4px 12px",fontSize:12,fontFamily:"Raleway,sans-serif",fontWeight:600}}>
+            <div key={x.l} style={{background:x.bg,border:`1px solid ${x.border}`,color:x.c,borderRadius:20,padding:"4px 12px",fontSize:12,fontFamily:"Manrope,sans-serif",fontWeight:600}}>
               {x.l}
             </div>
           ))}
@@ -429,7 +429,7 @@ const NetworkMap = () => {
               style={{display:"flex",alignItems:"center",gap:6,padding:"0 12px",height:34,borderRadius:8,
                 border:`1px solid ${editMode?"#0ea5e9":"hsl(var(--border))"}`,
                 color:editMode?"#0ea5e9":"hsl(var(--muted-foreground))",
-                fontFamily:"Raleway,sans-serif",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+                fontFamily:"Manrope,sans-serif",fontSize:12,fontWeight:600,cursor:"pointer"}}>
               {editMode?<><Unlock size={13}/> Mode édition</>:<><Lock size={13}/> Positions</>}
             </button>
           )}
@@ -437,7 +437,7 @@ const NetworkMap = () => {
             <button onClick={saveLayout} disabled={saving} title="Sauvegarder la disposition"
               style={{display:"flex",alignItems:"center",gap:6,padding:"0 12px",height:34,borderRadius:8,
                 border:"1px solid #10b981",background:"#f0fdf4",
-                color:"#10b981",fontFamily:"Raleway,sans-serif",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+                color:"#10b981",fontFamily:"Manrope,sans-serif",fontSize:12,fontWeight:600,cursor:"pointer"}}>
               <Save size={13}/> {saving?"Sauvegarde...":"Sauvegarder"}
             </button>
           )}
@@ -460,9 +460,9 @@ const NetworkMap = () => {
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10}}>
         {stats.map(s=>(
           <div key={s.l} style={{background:"hsl(var(--card))",border:"1px solid hsl(var(--border))",borderRadius:12,padding:"14px 16px",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
-            <p style={{fontSize:10,color:C.muted,fontFamily:"Raleway,sans-serif",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 0 4px"}}>{s.l}</p>
-            <p style={{fontSize:24,fontWeight:800,color:s.c,fontFamily:"Raleway,sans-serif",margin:"0 0 2px",lineHeight:1}}>{s.v}</p>
-            <p style={{fontSize:10,color:"hsl(var(--muted-foreground))",fontFamily:"Raleway,sans-serif",margin:0,opacity:0.6}}>{s.sub}</p>
+            <p style={{fontSize:10,color:C.muted,fontFamily:"Manrope,sans-serif",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",margin:"0 0 4px"}}>{s.l}</p>
+            <p style={{fontSize:24,fontWeight:800,color:s.c,fontFamily:"Manrope,sans-serif",margin:"0 0 2px",lineHeight:1}}>{s.v}</p>
+            <p style={{fontSize:10,color:"hsl(var(--muted-foreground))",fontFamily:"Manrope,sans-serif",margin:0,opacity:0.6}}>{s.sub}</p>
           </div>
         ))}
       </div>
@@ -473,7 +473,7 @@ const NetworkMap = () => {
         {editMode && isAdmin && (
           <div style={{position:"absolute",top:10,left:"50%",transform:"translateX(-50%)",zIndex:3,
             background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:20,padding:"4px 16px",
-            fontSize:11,color:"#2563eb",fontFamily:"Raleway,sans-serif",fontWeight:600,
+            fontSize:11,color:"#2563eb",fontFamily:"Manrope,sans-serif",fontWeight:600,
             display:"flex",alignItems:"center",gap:6}}>
             <Move size={12}/> Mode édition — glissez les nœuds pour les repositionner
           </div>
@@ -492,14 +492,14 @@ const NetworkMap = () => {
           <div style={{height:460,display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
             <div style={{textAlign:"center"}}>
               <div style={{width:36,height:36,border:"2px solid #e2e8f0",borderTop:`2px solid ${C.teal}`,borderRadius:"50%",animation:"nmspin 1s linear infinite",margin:"0 auto 12px"}}/>
-              <p style={{color:C.muted,fontSize:13,fontFamily:"Raleway,sans-serif"}}>Chargement de la topologie...</p>
+              <p style={{color:C.muted,fontSize:13,fontFamily:"Manrope,sans-serif"}}>Chargement de la topologie...</p>
             </div>
           </div>
         ):ipbxList.length===0?(
           <div style={{height:460,display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
             <div style={{textAlign:"center"}}>
               <Server size={32} color="#cbd5e1" style={{margin:"0 auto 12px"}}/>
-              <p style={{color:C.muted,fontSize:13,fontFamily:"Raleway,sans-serif"}}>Aucun IPBX configuré</p>
+              <p style={{color:C.muted,fontSize:13,fontFamily:"Manrope,sans-serif"}}>Aucun IPBX configuré</p>
             </div>
           </div>
         ):(
@@ -515,13 +515,13 @@ const NetworkMap = () => {
         )}
 
         {/* Zoom badge */}
-        <div style={{position:"absolute",bottom:10,right:12,zIndex:2,background:"rgba(255,255,255,0.9)",border:"1px solid #e2e8f0",borderRadius:6,padding:"3px 9px",fontSize:11,color:C.muted,fontFamily:"Raleway,sans-serif",backdropFilter:"blur(4px)"}}>
+        <div style={{position:"absolute",bottom:10,right:12,zIndex:2,background:"rgba(255,255,255,0.9)",border:"1px solid #e2e8f0",borderRadius:6,padding:"3px 9px",fontSize:11,color:C.muted,fontFamily:"Manrope,sans-serif",backdropFilter:"blur(4px)"}}>
           {Math.round(zoom*100)}%
         </div>
       </div>
 
       {/* Legend */}
-      <div style={{display:"flex",alignItems:"center",gap:20,fontSize:11,color:C.muted,fontFamily:"Raleway,sans-serif",flexWrap:"wrap"}}>
+      <div style={{display:"flex",alignItems:"center",gap:20,fontSize:11,color:C.muted,fontFamily:"Manrope,sans-serif",flexWrap:"wrap"}}>
         {[{c:C.online,l:"En ligne"},{c:C.offline,l:"Hors ligne"},{c:C.up,l:"Trunk UP"},{c:C.warn,l:"Latence élevée"}].map(x=>(
           <div key={x.l} style={{display:"flex",alignItems:"center",gap:6}}>
             <div style={{width:16,height:3,background:x.c,borderRadius:2}}/>{x.l}

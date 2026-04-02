@@ -64,7 +64,7 @@ const SipTrunks = () => {
   const degCount  = trunks.filter(t => t.status === "degraded").length;
 
   return (
-    <div className="space-y-5 pb-8" style={{ fontFamily: "Raleway, sans-serif" }}>
+    <div className="space-y-5 pb-8" style={{ fontFamily: "Manrope, sans-serif" }}>
 
       {/* ── En-tête ─────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4">
@@ -142,7 +142,12 @@ const SipTrunks = () => {
             <p className="text-sm font-semibold text-muted-foreground">Aucun résultat pour « {search} »</p>
           </div>
         ) : (
-          filtered.map((trunk, i) => (
+          filtered.map((trunk, i) => {
+            const sourceIp = trunk.local_ip || "—";
+            const destinationIp = trunk.remote_ip || trunk.ip_address || "—";
+            const destinationName = trunk.remote_ipbx?.name || trunk.provider || "Destination non définie";
+
+            return (
             <motion.div
               key={trunk.id}
               initial={{ opacity: 0, y: 6 }}
@@ -185,12 +190,22 @@ const SipTrunks = () => {
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {trunk.provider || "—"} · {trunk.ipbx?.name || "—"}
-                      {trunk.remote_ipbx?.name ? ` ↔ ${trunk.remote_ipbx.name}` : ""}
+                      {trunk.ipbx?.name || "—"}
                     </p>
-                    <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                      {trunk.local_ip || "—"} → {trunk.remote_ip || "—"}
-                    </p>
+                    <div className="mt-1.5 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-[11px]">
+                      <p className="text-muted-foreground">
+                        <span className="font-semibold text-foreground/90">Destination:</span>{" "}
+                        <span className="font-semibold text-foreground">{destinationName}</span>
+                      </p>
+                      <p className="font-mono text-muted-foreground">
+                        <span className="font-semibold text-foreground/90">IP dest:</span>{" "}
+                        <span className="text-foreground">{destinationIp}</span>
+                      </p>
+                      <p className="font-mono text-muted-foreground sm:col-span-2">
+                        <span className="font-semibold text-foreground/90">IP source:</span>{" "}
+                        <span className="text-foreground">{sourceIp}</span>
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -239,7 +254,7 @@ const SipTrunks = () => {
                 )}
               </div>
             </motion.div>
-          ))
+          )})
         )}
       </div>
     </div>

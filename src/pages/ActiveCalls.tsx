@@ -569,7 +569,10 @@ const ActiveCalls = () => {
     let filtered = allCdrs;
     if (dispositionFilter !== "all") filtered = filtered.filter(c => c.disposition === dispositionFilter);
     if (searchText) filtered = filtered.filter(c =>
-      c.src?.includes(searchText) || c.dst?.includes(searchText) ||
+      c.src?.includes(searchText) ||
+      c.dst?.includes(searchText) ||
+      c.src_name?.toLowerCase().includes(searchText.toLowerCase()) ||
+      c.dst_name?.toLowerCase().includes(searchText.toLowerCase()) ||
       c.ipbx_name?.toLowerCase().includes(searchText.toLowerCase())
     );
 
@@ -583,8 +586,30 @@ const ActiveCalls = () => {
   // ── Export CSV ────────────────────────────────────────────────────────────
   const handleExport = () => {
     if (!cdrs.length) return;
-    const headers = ["Date", "Appelant", "Destinataire", "Durée (s)", "Billsec", "Disposition", "Channel", "IPBX"];
-    const rows = cdrs.map(c => [formatDate(c.calldate), c.src, c.dst, c.duration || 0, c.billsec || 0, c.disposition, c.channel || "", c.ipbx_name || ""]);
+    const headers = [
+      "Date",
+      "Appelant (Nom)",
+      "Appelant (Numero)",
+      "Destinataire (Nom)",
+      "Destinataire (Numero)",
+      "Duree (s)",
+      "Billsec",
+      "Disposition",
+      "Channel",
+      "IPBX",
+    ];
+    const rows = cdrs.map(c => [
+      formatDate(c.calldate),
+      c.src_name || "",
+      c.src || "",
+      c.dst_name || "",
+      c.dst || "",
+      c.duration || 0,
+      c.billsec || 0,
+      c.disposition,
+      c.channel || "",
+      c.ipbx_name || "",
+    ]);
     const csv = [headers, ...rows].map(r => r.map((v: any) => `"${v}"`).join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -852,12 +877,12 @@ const ActiveCalls = () => {
                         className="border-b border-border/50 hover:bg-muted/20 cursor-pointer transition-colors">
                         <td className="p-3 font-mono text-muted-foreground whitespace-nowrap">{formatDate(cdr.calldate)}</td>
                         <td className="p-3">
-                          <p className="font-mono font-semibold text-foreground">{cdr.src}</p>
-                          {cdr.src_name && <p className="text-muted-foreground text-[11px]">{cdr.src_name}</p>}
+                          <p className="font-semibold text-foreground">{cdr.src_name || "Inconnu"}</p>
+                          <p className="text-muted-foreground text-[11px] font-mono">{cdr.src || "—"}</p>
                         </td>
                         <td className="p-3">
-                          <p className="font-mono text-foreground">{cdr.dst}</p>
-                          {cdr.dst_name && <p className="text-muted-foreground text-[11px]">{cdr.dst_name}</p>}
+                          <p className="font-semibold text-foreground">{cdr.dst_name || "Inconnu"}</p>
+                          <p className="text-muted-foreground text-[11px] font-mono">{cdr.dst || "—"}</p>
                         </td>
                         <td className="p-3 font-mono font-bold text-foreground">{formatSeconds(cdr.billsec || cdr.duration)}</td>
                         <td className="p-3">

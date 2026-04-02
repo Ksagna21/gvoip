@@ -7,7 +7,7 @@ interface AppLayoutProps {
 export const AppLayout = ({ children }: AppLayoutProps) => {
   return (
     /* Fond page avec légère texture */
-    <div className="overflow-y-scroll [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] transition-all duration-300 max-h-screen bg-white flex dark:bg-transparent relative" style={{ fontFamily: "Raleway, sans-serif" }}>
+    <div className="overflow-y-scroll [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] transition-all duration-300 max-h-screen bg-white flex dark:bg-transparent relative" style={{ fontFamily: "Manrope, sans-serif" }}>
       <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",opacity:1, zIndex:0}}>
           <defs>
             <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse">

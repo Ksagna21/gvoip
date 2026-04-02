@@ -14,7 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Raleway", "sans-serif"],
+        sans: ["Manrope", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
       },
       colors: {
