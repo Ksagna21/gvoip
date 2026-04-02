@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Camera, Loader2, Lock, Upload, User } from "lucide-react";
 
-const MAX_AVATAR_SIZE = 1024 * 1024;
+const MAX_AVATAR_SIZE = 1024 * 1024; // 1 Mo
+const AVATAR_BUCKET = "avatars";
 
 const Profile = () => {
   const { user } = useAuth();
@@ -21,6 +22,7 @@ const Profile = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
 
@@ -58,7 +60,9 @@ const Profile = () => {
   }, [toast, user]);
 
   const handleAvatarUpload = async (file?: File) => {
-    if (!file) return;
+    if (!file || !user) return;
+
+    // Validation type
     if (!file.type.startsWith("image/")) {
       toast({
         title: "Format invalide",
@@ -67,21 +71,83 @@ const Profile = () => {
       });
       return;
     }
+
+    // Validation taille
     if (file.size > MAX_AVATAR_SIZE) {
       toast({
         title: "Image trop lourde",
-        description: "Taille maximale: 1 Mo",
+        description: "Taille maximale : 1 Mo",
         variant: "destructive",
       });
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
-      if (result) setAvatarUrl(result);
-    };
-    reader.readAsDataURL(file);
+    setUploadingAvatar(true);
+
+    try {
+      // Supprimer l'ancien avatar du bucket s'il existe
+      if (avatarUrl) {
+        const oldPath = avatarUrl.split(`/${AVATAR_BUCKET}/`)[1];
+        if (oldPath) {
+          await supabase.storage.from(AVATAR_BUCKET).remove([oldPath]);
+        }
+      }
+
+      // Construire un chemin unique : avatars/{user_id}/{timestamp}.{ext}
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const filePath = `${user.id}/${Date.now()}.${ext}`;
+
+      // Upload vers Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from(AVATAR_BUCKET)
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: true,
+          contentType: file.type,
+        });
+
+      if (uploadError) {
+        toast({
+          title: "Erreur upload",
+          description: uploadError.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Recuperer l'URL publique
+      const { data: urlData } = supabase.storage
+        .from(AVATAR_BUCKET)
+        .getPublicUrl(filePath);
+
+      const publicUrl = urlData?.publicUrl ?? null;
+
+      // Mettre a jour la BDD immediatement
+      const { error: dbError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("user_id", user.id);
+
+      if (dbError) {
+        toast({
+          title: "Erreur",
+          description: dbError.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setAvatarUrl(publicUrl);
+      toast({ title: "Photo mise a jour", description: "Votre avatar a ete enregistre." });
+    } catch (err) {
+      toast({
+        title: "Erreur inattendue",
+        description: String(err),
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingAvatar(false);
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -91,7 +157,6 @@ const Profile = () => {
       .from("profiles")
       .update({
         display_name: displayName.trim() || null,
-        avatar_url: avatarUrl,
       })
       .eq("user_id", user.id);
 
@@ -143,25 +208,37 @@ const Profile = () => {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
+        {/* ── Bloc profil ── */}
         <div className="noc-card border border-border rounded-xl p-6 space-y-5">
           <h2 className="text-lg font-semibold">Photo de profil</h2>
 
           <div className="flex items-center gap-4">
-            <Avatar className="h-20 w-20 ring-2 ring-primary/20">
-              <AvatarImage src={avatarUrl || undefined} alt={displayName || "Avatar"} />
-              <AvatarFallback className="text-lg font-semibold">{initials}</AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="h-20 w-20 ring-2 ring-primary/20">
+                <AvatarImage src={avatarUrl || undefined} alt={displayName || "Avatar"} />
+                <AvatarFallback className="text-lg font-semibold">{initials}</AvatarFallback>
+              </Avatar>
+              {uploadingAvatar && (
+                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50">
+                  <Loader2 className="h-5 w-5 animate-spin text-white" />
+                </div>
+              )}
+            </div>
 
             <div className="space-y-2">
-              <Label htmlFor="avatar-file" className="cursor-pointer inline-flex items-center gap-2 rounded-lg border border-input px-3 py-2 text-sm hover:bg-muted/50 transition-colors">
+              <Label
+                htmlFor="avatar-file"
+                className={`cursor-pointer inline-flex items-center gap-2 rounded-lg border border-input px-3 py-2 text-sm hover:bg-muted/50 transition-colors ${uploadingAvatar ? "pointer-events-none opacity-50" : ""}`}
+              >
                 <Upload size={14} />
-                Choisir une photo
+                {uploadingAvatar ? "Upload en cours..." : "Choisir une photo"}
               </Label>
               <Input
                 id="avatar-file"
                 type="file"
                 accept="image/*"
                 className="hidden"
+                disabled={uploadingAvatar}
                 onChange={(e) => handleAvatarUpload(e.target.files?.[0])}
               />
               <p className="text-xs text-muted-foreground">Formats image acceptes, max 1 Mo.</p>
@@ -183,12 +260,13 @@ const Profile = () => {
             <Input id="profile-email" value={email} disabled />
           </div>
 
-          <Button onClick={handleSaveProfile} disabled={savingProfile} className="w-full">
+          <Button onClick={handleSaveProfile} disabled={savingProfile || uploadingAvatar} className="w-full">
             {savingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
             Enregistrer le profil
           </Button>
         </div>
 
+        {/* ── Bloc mot de passe ── */}
         <div className="noc-card border border-border rounded-xl p-6 space-y-5">
           <h2 className="text-lg font-semibold">Changer le mot de passe</h2>
           <form className="space-y-4" onSubmit={handleSavePassword}>
