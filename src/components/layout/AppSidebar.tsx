@@ -262,7 +262,10 @@ const SidebarContent = ({ isCollapsed, onCollapse }: { isCollapsed: boolean; onC
                 </span>
               </div>
               <div className="min-w-0">
-                <p className="font-semibold text-sm truncate">{user?.email?.split("@")[0] || "Utilisateur"}</p>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                  <p className="font-semibold text-sm truncate">{user?.email?.split("@")[0] || "Utilisateur"}</p>
+                </div>
                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
             </div>
