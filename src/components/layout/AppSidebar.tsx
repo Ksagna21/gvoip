@@ -253,11 +253,6 @@ const SidebarContent = ({ isCollapsed, onCollapse }: { isCollapsed: boolean; onC
 
       {/* Footer Profil */}
       <div className="p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          {!isCollapsed && <span className="text-xs font-medium text-muted-foreground">Système opérationnel</span>}
-        </div>
-
         {!isCollapsed ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
