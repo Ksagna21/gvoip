@@ -143,9 +143,8 @@ const SipTrunks = () => {
           </div>
         ) : (
           filtered.map((trunk, i) => {
-            const sourceIp = trunk.local_ip || "—";
+            const sourceIp = trunk.ipbx_id ? (trunk.local_ip || "—") : "—";
             const destinationIp = trunk.remote_ip || trunk.ip_address || "—";
-            const destinationName = trunk.remote_ipbx?.name || trunk.provider || "Destination non définie";
 
             return (
             <motion.div
@@ -192,18 +191,14 @@ const SipTrunks = () => {
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {trunk.ipbx?.name || "—"}
                     </p>
-                    <div className="mt-1.5 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-[11px]">
-                      <p className="text-muted-foreground">
-                        <span className="font-semibold text-foreground/90">Destination:</span>{" "}
-                        <span className="font-semibold text-foreground">{destinationName}</span>
+                    <div className="mt-1.5 flex flex-wrap gap-x-6 gap-y-1.5 text-[11px]">
+                      <p className="font-mono text-muted-foreground">
+                        <span className="font-semibold text-foreground/90">IP source:</span>{" "}
+                        <span className="text-foreground">{trunk.ip_address || "—"}</span>
                       </p>
                       <p className="font-mono text-muted-foreground">
                         <span className="font-semibold text-foreground/90">IP dest:</span>{" "}
                         <span className="text-foreground">{destinationIp}</span>
-                      </p>
-                      <p className="font-mono text-muted-foreground sm:col-span-2">
-                        <span className="font-semibold text-foreground/90">IP source:</span>{" "}
-                        <span className="text-foreground">{sourceIp}</span>
                       </p>
                     </div>
                   </div>
