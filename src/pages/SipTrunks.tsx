@@ -194,7 +194,7 @@ const SipTrunks = () => {
                     <div className="mt-1.5 flex flex-wrap gap-x-6 gap-y-1.5 text-[11px]">
                       <p className="font-mono text-muted-foreground">
                         <span className="font-semibold text-foreground/90">IP source:</span>{" "}
-                        <span className="text-foreground">{trunk.ip_address || "—"}</span>
+                        <span className="text-foreground">{trunk.local_ip || trunk.ip_address || "—"}</span>
                       </p>
                       <p className="font-mono text-muted-foreground">
                         <span className="font-semibold text-foreground/90">IP dest:</span>{" "}
