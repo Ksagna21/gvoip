@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/contexts/ProfileContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -8,12 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Camera, Loader2, Lock, Upload, User } from "lucide-react";
 
-const MAX_AVATAR_SIZE = 1024 * 1024; // 1 Mo
+const MAX_AVATAR_SIZE = 1024 * 1024;
 const AVATAR_BUCKET = "avatars";
 
 const Profile = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { profile, refreshProfile } = useProfile();
 
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -26,125 +28,71 @@ const Profile = () => {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
 
+  // Synchroniser les champs depuis le contexte partagé
+  useEffect(() => {
+    if (profile) {
+      setDisplayName(profile.display_name || "");
+      setEmail(profile.email || user?.email || "");
+      setAvatarUrl(profile.avatar_url || null);
+      setLoadingProfile(false);
+    }
+  }, [profile, user]);
+
   const initials = useMemo(() => {
     if (displayName?.trim()) return displayName.trim().charAt(0).toUpperCase();
     if (email?.trim()) return email.trim().charAt(0).toUpperCase();
     return "U";
   }, [displayName, email]);
 
-  useEffect(() => {
-    const loadProfile = async () => {
-      if (!user) return;
-      setLoadingProfile(true);
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("display_name, email, avatar_url")
-        .eq("user_id", user.id)
-        .single();
-
-      if (error) {
-        toast({
-          title: "Erreur",
-          description: "Impossible de charger le profil",
-          variant: "destructive",
-        });
-      } else {
-        setDisplayName(data?.display_name || "");
-        setEmail(data?.email || user.email || "");
-        setAvatarUrl(data?.avatar_url || null);
-      }
-      setLoadingProfile(false);
-    };
-
-    loadProfile();
-  }, [toast, user]);
-
   const handleAvatarUpload = async (file?: File) => {
     if (!file || !user) return;
 
-    // Validation type
     if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Format invalide",
-        description: "Veuillez selectionner une image",
-        variant: "destructive",
-      });
+      toast({ title: "Format invalide", description: "Veuillez selectionner une image", variant: "destructive" });
       return;
     }
-
-    // Validation taille
     if (file.size > MAX_AVATAR_SIZE) {
-      toast({
-        title: "Image trop lourde",
-        description: "Taille maximale : 1 Mo",
-        variant: "destructive",
-      });
+      toast({ title: "Image trop lourde", description: "Taille maximale : 1 Mo", variant: "destructive" });
       return;
     }
 
     setUploadingAvatar(true);
-
     try {
-      // Supprimer l'ancien avatar du bucket s'il existe
       if (avatarUrl) {
         const oldPath = avatarUrl.split(`/${AVATAR_BUCKET}/`)[1];
-        if (oldPath) {
-          await supabase.storage.from(AVATAR_BUCKET).remove([oldPath]);
-        }
+        if (oldPath) await supabase.storage.from(AVATAR_BUCKET).remove([oldPath]);
       }
 
-      // Construire un chemin unique : avatars/{user_id}/{timestamp}.{ext}
       const ext = file.name.split(".").pop() ?? "jpg";
       const filePath = `${user.id}/${Date.now()}.${ext}`;
 
-      // Upload vers Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from(AVATAR_BUCKET)
-        .upload(filePath, file, {
-          cacheControl: "3600",
-          upsert: true,
-          contentType: file.type,
-        });
+        .upload(filePath, file, { cacheControl: "3600", upsert: true, contentType: file.type });
 
       if (uploadError) {
-        toast({
-          title: "Erreur upload",
-          description: uploadError.message,
-          variant: "destructive",
-        });
+        toast({ title: "Erreur upload", description: uploadError.message, variant: "destructive" });
         return;
       }
 
-      // Recuperer l'URL publique
-      const { data: urlData } = supabase.storage
-        .from(AVATAR_BUCKET)
-        .getPublicUrl(filePath);
-
+      const { data: urlData } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(filePath);
       const publicUrl = urlData?.publicUrl ?? null;
 
-      // Mettre a jour la BDD immediatement
       const { error: dbError } = await supabase
         .from("profiles")
         .update({ avatar_url: publicUrl })
         .eq("user_id", user.id);
 
       if (dbError) {
-        toast({
-          title: "Erreur",
-          description: dbError.message,
-          variant: "destructive",
-        });
+        toast({ title: "Erreur", description: dbError.message, variant: "destructive" });
         return;
       }
 
       setAvatarUrl(publicUrl);
+      await refreshProfile(); // ← sidebar mise à jour instantanément
       toast({ title: "Photo mise a jour", description: "Votre avatar a ete enregistre." });
     } catch (err) {
-      toast({
-        title: "Erreur inattendue",
-        description: String(err),
-        variant: "destructive",
-      });
+      toast({ title: "Erreur inattendue", description: String(err), variant: "destructive" });
     } finally {
       setUploadingAvatar(false);
     }
@@ -153,16 +101,16 @@ const Profile = () => {
   const handleSaveProfile = async () => {
     if (!user) return;
     setSavingProfile(true);
+
     const { error } = await supabase
       .from("profiles")
-      .update({
-        display_name: displayName.trim() || null,
-      })
+      .update({ display_name: displayName.trim() || null })
       .eq("user_id", user.id);
 
     if (error) {
       toast({ title: "Erreur", description: error.message, variant: "destructive" });
     } else {
+      await refreshProfile(); // ← le nom se met à jour dans la sidebar instantanément
       toast({ title: "Profil mis a jour", description: "Les modifications ont ete enregistrees." });
     }
     setSavingProfile(false);
