@@ -539,6 +539,7 @@ class AMIClient:
             upsert_data = {
                 "name": name, "ipbx_id": self.ipbx_id, "status": status,
                 "host": uri or name or "unknown",
+                "local_ip": self.host,
                 "last_check": datetime.now().isoformat()
             }
             if latency is not None: upsert_data["latency"] = latency
