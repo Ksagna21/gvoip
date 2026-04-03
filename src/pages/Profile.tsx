@@ -152,45 +152,56 @@ const Profile = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Mon profil</h1>
-        <p className="text-sm text-muted-foreground">Mettre a jour votre photo et votre mot de passe.</p>
+        <p className="text-sm text-muted-foreground">Mettre a jour votre photo, votre nom et votre securite.</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* ── Bloc profil ── */}
-        <div className="noc-card border border-border rounded-xl p-6 space-y-5">
-          <h2 className="text-lg font-semibold">Photo de profil</h2>
+        <div className="noc-card border border-border rounded-2xl p-8 space-y-6">
+          <div className="space-y-1 text-center">
+            <h2 className="text-lg font-semibold">Photo de profil</h2>
+            <p className="text-sm text-muted-foreground">Avatar, nom et identite de compte.</p>
+          </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col items-center text-center gap-5">
             <div className="relative">
-              <Avatar className="h-20 w-20 ring-2 ring-primary/20">
+              <Avatar className="h-28 w-28 bg-muted/20 ring-2 ring-primary/25">
                 <AvatarImage src={avatarUrl || undefined} alt={displayName || "Avatar"} />
-                <AvatarFallback className="text-lg font-semibold">{initials}</AvatarFallback>
+                <AvatarFallback className="text-xl font-semibold">{initials}</AvatarFallback>
               </Avatar>
+
               {uploadingAvatar && (
-                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50">
+                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/20 dark:bg-black/50">
                   <Loader2 className="h-5 w-5 animate-spin text-white" />
                 </div>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label
-                htmlFor="avatar-file"
-                className={`cursor-pointer inline-flex items-center gap-2 rounded-lg border border-input px-3 py-2 text-sm hover:bg-muted/50 transition-colors ${uploadingAvatar ? "pointer-events-none opacity-50" : ""}`}
-              >
-                <Upload size={14} />
-                {uploadingAvatar ? "Upload en cours..." : "Choisir une photo"}
-              </Label>
-              <Input
-                id="avatar-file"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                disabled={uploadingAvatar}
-                onChange={(e) => handleAvatarUpload(e.target.files?.[0])}
-              />
-              <p className="text-xs text-muted-foreground">Formats image acceptes, max 1 Mo.</p>
+            <div className="space-y-1">
+              <div className="text-xl font-bold text-foreground">{displayName || "Utilisateur"}</div>
+              <div className="text-sm text-muted-foreground">{email || "—"}</div>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label
+              htmlFor="avatar-file"
+              className={`cursor-pointer inline-flex items-center justify-center gap-2 w-full rounded-lg border border-input px-3 py-2 text-sm hover:bg-muted/50 transition-colors ${
+                uploadingAvatar ? "pointer-events-none opacity-50" : ""
+              }`}
+            >
+              <Upload size={14} />
+              {uploadingAvatar ? "Upload en cours..." : "Choisir une photo"}
+            </Label>
+            <Input
+              id="avatar-file"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={uploadingAvatar}
+              onChange={(e) => handleAvatarUpload(e.target.files?.[0])}
+            />
+            <p className="text-xs text-muted-foreground text-center">Formats image acceptes, max 1 Mo.</p>
           </div>
 
           <div className="space-y-2">
@@ -209,14 +220,21 @@ const Profile = () => {
           </div>
 
           <Button onClick={handleSaveProfile} disabled={savingProfile || uploadingAvatar} className="w-full">
-            {savingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
+            {savingProfile ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Camera className="mr-2 h-4 w-4" />
+            )}
             Enregistrer le profil
           </Button>
         </div>
 
         {/* ── Bloc mot de passe ── */}
-        <div className="noc-card border border-border rounded-xl p-6 space-y-5">
-          <h2 className="text-lg font-semibold">Changer le mot de passe</h2>
+        <div className="noc-card border border-border rounded-2xl p-8 space-y-6">
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold">Changer le mot de passe</h2>
+            <p className="text-sm text-muted-foreground">Mettez a jour votre securite.</p>
+          </div>
           <form className="space-y-4" onSubmit={handleSavePassword}>
             <div className="space-y-2">
               <Label htmlFor="new-password">Nouveau mot de passe</Label>
