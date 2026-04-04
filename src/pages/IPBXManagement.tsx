@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/noc/StatusBadge";
-import { Server, Plus, Pencil, Trash2, Wifi, WifiOff, Search, Terminal, ExternalLink } from "lucide-react";
+import { Server, Plus, Pencil, Trash2, Wifi, WifiOff, Search, Terminal, ExternalLink, Navigation } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 
@@ -180,6 +180,12 @@ const IPBXManagement = () => {
     window.open(`http://${window.location.hostname}:9061/ssh?ip=${ip}&user=${user}`, "_blank");
   };
 
+  const openGui = (i: IPBX) => {
+    const ip = (i.ip_address || i.host || "").trim();
+    if (!ip) return;
+    window.open(`http://${ip}`, "_blank");
+  };
+
   const getStatusColor = (status: string) => {
     if (status === "online") return "text-success";
     if (status === "offline" || status === "error") return "text-destructive";
@@ -327,6 +333,14 @@ const IPBXManagement = () => {
                     onClick={() => openWebSSH(i)}
                   >
                     <Terminal size={13} /> SSH
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1 text-xs"
+                    onClick={() => openGui(i)}
+                  >
+                    <Navigation size={13} /> GUI
                   </Button>
 
                   {isAdmin && (
