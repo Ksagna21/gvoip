@@ -380,8 +380,16 @@ const CountryDashboard = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead><tr className="border-b border-border">
-                      {["Nom","Statut","IP Locale","IP Distante","IPBX","Latence","Canaux"].map(h => (
-                        <th key={h} className="px-3 py-2 text-left font-black text-muted-foreground uppercase tracking-wide">{h}</th>
+                      {[
+                        { label: "Nom",         align: "text-left"   },
+                        { label: "Statut",      align: "text-left"   },
+                        { label: "IP Locale",   align: "text-left"   },
+                        { label: "IP Distante", align: "text-left"   },
+                        { label: "IPBX",        align: "text-left"   },
+                        { label: "Latence",     align: "text-center" },
+                        { label: "Canaux",      align: "text-center" },
+                      ].map(({ label, align }) => (
+                        <th key={label} className={`px-3 py-2 ${align} font-black text-muted-foreground uppercase tracking-wide`}>{label}</th>
                       ))}
                     </tr></thead>
                     <tbody>
@@ -415,8 +423,15 @@ const CountryDashboard = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead><tr className="border-b border-border">
-                      {["Numéro","Nom","Statut","IPBX","IP","Appels"].map(h => (
-                        <th key={h} className="px-3 py-2 text-left font-black text-muted-foreground uppercase tracking-wide">{h}</th>
+                      {[
+                        { label: "Numéro", align: "text-left"  },
+                        { label: "Nom",    align: "text-left"  },
+                        { label: "Statut", align: "text-left"  },
+                        { label: "IPBX",   align: "text-left"  },
+                        { label: "IP",     align: "text-left"  },
+                        { label: "Appels", align: "text-right" },
+                      ].map(({ label, align }) => (
+                        <th key={label} className={`px-3 py-2 ${align} font-black text-muted-foreground uppercase tracking-wide`}>{label}</th>
                       ))}
                     </tr></thead>
                     <tbody>
