@@ -177,7 +177,7 @@ const IPBXManagement = () => {
   const openWebSSH = (i: IPBX) => {
     const ip = i.ip_address || i.host;
     const user = i.ssh_user || "root";
-    window.open(`http://${window.location.hostname}:9061/ssh?ip=${ip}&user=${user}`, "_blank");
+    window.open(`http://${window.location.origin}/webssh/ssh/${ip}/?user=${user}`, "_blank");
   };
 
   const openGui = (i: IPBX) => {
