@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const loadUserData = async (userId: string, retry = 0) => {
     const [roleRes, profileRes, permRes] = await Promise.all([
       supabase.from("user_roles").select("role").eq("user_id", userId),
-      supabase.from("profiles").select("is_active, force_password_change").eq("user_id", userId).single(),
+      supabase.from("profiles").select("is_active, force_password_change").eq("user_id", userId).maybeSingle(),
       supabase.from("user_permissions" as any).select("permission").eq("user_id", userId),
     ]);
     // Retry si profil pas encore créé (max 5 fois)
