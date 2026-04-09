@@ -15,7 +15,7 @@ Usage frontend :
   iframe src="/webssh/ssh/1.2.3.4/"  (trailing slash important pour les assets relatifs)
   ou WebSocket direct : ws://SERVER/webssh/ssh/1.2.3.4/ws
 """
-import asyncio, subprocess, re, time, logging, sys
+import asyncio, subprocess, re, time, logging, sys, os, shutil
 
 try:
     from aiohttp import web, ClientSession, WSMsgType, ClientConnectorError
@@ -27,9 +27,13 @@ except ImportError:
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 log = logging.getLogger(__name__)
 
-procs    = {}   # ip -> {proc, port, last_used}
-port_map = {}   # ip -> port
+# session_key -> {proc, port, last_used}
+procs    = {}
+# session_key -> port
+port_map = {}
 PORT_BASE = 9100
+TTYD_LOG_PATH = "/var/log/gvoip-webssh-ttyd.log"
+MAX_PASSWORD_LEN = 256
 
 THEME = ('{"background":"#0d1117","foreground":"#e6edf3","cursor":"#58a6ff",'
          '"cursorAccent":"#0d1117","selection":"rgba(88,166,255,0.3)",'
@@ -45,40 +49,78 @@ USER_RE = re.compile(r"^[a-zA-Z0-9_\-]{1,32}$")
 
 # ── Création / réutilisation d'une session ttyd ───────────────────────────────
 async def get_or_create_ttyd(ip: str, ssh_user: str = "root") -> int:
-    """Retourne le port loopback du processus ttyd pour cet IP (créé si absent/mort)."""
-    if ip in procs and procs[ip]["proc"].poll() is None:
-        procs[ip]["last_used"] = time.time()
-        return procs[ip]["port"]
+    raise RuntimeError("get_or_create_ttyd() signature has changed; call get_or_create_ttyd(ip, user, password)")
 
-    if ip not in port_map:
-        port_map[ip] = PORT_BASE + len(port_map)
-    port = port_map[ip]
+
+async def get_or_create_ttyd(ip: str, ssh_user: str = "root", ssh_password: str | None = None) -> int:
+    """Retourne le port loopback du processus ttyd pour cet IP/user (créé si absent/mort).
+
+    Si ssh_password est fourni, utilise sshpass (-e + SSHPASS env) pour permettre auth password non-interactive.
+    """
+    auth_tag = "pass" if ssh_password else "key"
+    session_key = f"{ssh_user}@{ip}|{auth_tag}"
+
+    if session_key in procs and procs[session_key]["proc"].poll() is None:
+        procs[session_key]["last_used"] = time.time()
+        return procs[session_key]["port"]
+
+    if session_key not in port_map:
+        port_map[session_key] = PORT_BASE + len(port_map)
+    port = port_map[session_key]
 
     # Terminer proprement l'éventuel processus zombie
-    if ip in procs:
+    if session_key in procs:
         try:
-            procs[ip]["proc"].terminate()
+            procs[session_key]["proc"].terminate()
         except Exception:
             pass
 
-    proc = subprocess.Popen([
-        "ttyd",
-        "-p", str(port),
-        "-i", "127.0.0.1",
-        "--writable",
-        # PAS de --once : ttyd reste vivant pour les reconnexions du terminal
-        "-t", f"theme={THEME}",
-        "-t", "fontSize=13",
-        "-t", "fontFamily=JetBrains Mono,Fira Code,monospace",
-        "ssh",
-        "-o", "StrictHostKeyChecking=no",
-        "-o", "UserKnownHostsFile=/dev/null",
-        "-o", "ConnectTimeout=10",
-        f"{ssh_user}@{ip}",
-    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    env = os.environ.copy()
+    ssh_cmd: list[str]
+    if ssh_password:
+        if len(ssh_password) > MAX_PASSWORD_LEN:
+            raise ValueError("password trop long")
+        if shutil.which("sshpass") is None:
+            raise RuntimeError("sshpass n'est pas installé sur le serveur")
+        env["SSHPASS"] = ssh_password
+        ssh_cmd = [
+            "sshpass", "-e",
+            "ssh",
+            "-o", "StrictHostKeyChecking=no",
+            "-o", "UserKnownHostsFile=/dev/null",
+            "-o", "ConnectTimeout=10",
+            f"{ssh_user}@{ip}",
+        ]
+    else:
+        ssh_cmd = [
+            "ssh",
+            "-o", "StrictHostKeyChecking=no",
+            "-o", "UserKnownHostsFile=/dev/null",
+            "-o", "ConnectTimeout=10",
+            f"{ssh_user}@{ip}",
+        ]
 
-    procs[ip] = {"proc": proc, "port": port, "last_used": time.time()}
-    log.info(f"ttyd démarré pour {ssh_user}@{ip} sur 127.0.0.1:{port}")
+    ttyd_log = open(TTYD_LOG_PATH, "a", buffering=1)
+    proc = subprocess.Popen(
+        [
+            "ttyd",
+            "-p", str(port),
+            "-i", "127.0.0.1",
+            "--writable",
+            # PAS de --once : ttyd reste vivant pour les reconnexions du terminal
+            "-t", f"theme={THEME}",
+            "-t", "fontSize=13",
+            "-t", "fontFamily=JetBrains Mono,Fira Code,monospace",
+            *ssh_cmd,
+        ],
+        stdout=ttyd_log,
+        stderr=ttyd_log,
+        close_fds=True,
+        env=env,
+    )
+
+    procs[session_key] = {"proc": proc, "port": port, "last_used": time.time()}
+    log.info(f"ttyd démarré pour {ssh_user}@{ip} ({auth_tag}) sur 127.0.0.1:{port}")
 
     # CORRECTION : asyncio.sleep au lieu de time.sleep (non bloquant)
     await asyncio.sleep(1.0)
@@ -90,15 +132,15 @@ async def cleanup_loop():
     while True:
         await asyncio.sleep(60)
         now = time.time()
-        for ip in list(procs.keys()):
-            if now - procs[ip].get("last_used", 0) > 600:
+        for session_key in list(procs.keys()):
+            if now - procs[session_key].get("last_used", 0) > 600:
                 try:
-                    procs[ip]["proc"].terminate()
+                    procs[session_key]["proc"].terminate()
                 except Exception:
                     pass
-                del procs[ip]
-                port_map.pop(ip, None)
-                log.info(f"Session ttyd {ip} nettoyée (inactivité)")
+                del procs[session_key]
+                port_map.pop(session_key, None)
+                log.info(f"Session ttyd {session_key} nettoyée (inactivité)")
 
 
 # ── Handler principal : /ssh/{ip}  et  /ssh/{ip}/{path:.*} ───────────────────
@@ -114,13 +156,22 @@ async def handle_ssh(request: web.Request) -> web.StreamResponse:
     """
     ip   = request.match_info.get("ip", "").strip()
     user = request.query.get("user", "root").strip()
+    password = (request.query.get("password") or request.query.get("pass") or request.query.get("ssh_password") or "").strip()
+    if password == "":
+        password = None
 
     if not IP_RE.match(ip):
         return web.Response(status=400, text="Paramètre ip invalide (doit être dans le chemin : /ssh/{ip}/)")
     if not USER_RE.match(user):
         return web.Response(status=400, text="Paramètre user invalide")
 
-    port = await get_or_create_ttyd(ip, user)
+    try:
+        port = await get_or_create_ttyd(ip, user, password)
+    except ValueError as e:
+        return web.Response(status=400, text=str(e))
+    except Exception as e:
+        log.error(f"Erreur start ttyd {user}@{ip}: {e}")
+        return web.Response(status=500, text=str(e))
 
     # Chemin à transmettre à ttyd (tout ce qui vient après /ssh/{ip})
     sub_path = request.match_info.get("path", "")
@@ -131,7 +182,10 @@ async def handle_ssh(request: web.Request) -> web.StreamResponse:
 
     # ── Proxy WebSocket ──────────────────────────────────────────────────────
     if request.headers.get("Upgrade", "").lower() == "websocket":
-        ws_client = web.WebSocketResponse()
+        # Négocier le subprotocol demandé par le navigateur (souvent "tty")
+        proto_hdr = request.headers.get("Sec-WebSocket-Protocol", "")
+        client_protocols = tuple(p.strip() for p in proto_hdr.split(",") if p.strip())
+        ws_client = web.WebSocketResponse(protocols=client_protocols or None)
         await ws_client.prepare(request)
         # sub_path est typiquement "/ws" ici — toujours correct car l'IP est dans le chemin
         ws_target = f"ws://127.0.0.1:{port}{sub_path}"
@@ -139,18 +193,31 @@ async def handle_ssh(request: web.Request) -> web.StreamResponse:
             async with ClientSession() as session:
                 async with session.ws_connect(
                     ws_target,
-                    protocols=["tty"],
+                    protocols=list(client_protocols) if client_protocols else None,
                     headers={"Origin": f"http://127.0.0.1:{port}"},
                 ) as ws_server:
-                    async def fwd(src, dst):
-                        async for msg in src:
-                            if msg.type == WSMsgType.TEXT:
-                                await dst.send_str(msg.data)
-                            elif msg.type == WSMsgType.BINARY:
-                                await dst.send_bytes(msg.data)
-                            elif msg.type in (WSMsgType.CLOSE, WSMsgType.ERROR):
-                                break
-                    await asyncio.gather(fwd(ws_client, ws_server), fwd(ws_server, ws_client))
+                    async def fwd(src, dst, direction: str):
+                        try:
+                            async for msg in src:
+                                if msg.type == WSMsgType.TEXT:
+                                    await dst.send_str(msg.data)
+                                elif msg.type == WSMsgType.BINARY:
+                                    await dst.send_bytes(msg.data)
+                                elif msg.type == WSMsgType.CLOSE:
+                                    log.info(f"WS {ip} {direction}: CLOSE frame")
+                                    break
+                                elif msg.type == WSMsgType.ERROR:
+                                    log.error(f"WS {ip} {direction}: ERROR {src.exception()}")
+                                    break
+                        except Exception as e:
+                            log.error(f"Erreur WS fwd {ip} {direction}: {e}")
+                        finally:
+                            return
+
+                    await asyncio.gather(
+                        fwd(ws_client, ws_server, "client->ttyd"),
+                        fwd(ws_server, ws_client, "ttyd->client"),
+                    )
         except Exception as e:
             log.error(f"Erreur WS {ip}: {e}")
         return ws_client
@@ -183,8 +250,8 @@ async def handle_ssh(request: web.Request) -> web.StreamResponse:
 async def handle_health(request: web.Request) -> web.Response:
     import json
     sessions = [
-        {"ip": ip, "port": d["port"], "running": d["proc"].poll() is None}
-        for ip, d in procs.items()
+        {"key": k, "port": d["port"], "running": d["proc"].poll() is None}
+        for k, d in procs.items()
     ]
     return web.Response(
         text=json.dumps({"status": "ok", "sessions": sessions}),
