@@ -152,7 +152,7 @@ const CountryDashboard = () => {
     const load = async () => {
       setLoading(true);
       const [countryRes, ipbxRes] = await Promise.all([
-        supabase.from("countries").select("*").eq("id", id).single(),
+        supabase.from("countries").select("*").eq("id", id).maybeSingle(),
         supabase.from("ipbx").select("*").eq("country_id", id),
       ]);
       setCountry(countryRes.data);

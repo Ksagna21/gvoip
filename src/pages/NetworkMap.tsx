@@ -94,7 +94,7 @@ const NetworkMap = () => {
       .from("map_layouts")
       .select("positions")
       .eq("id", "network_map")
-      .single();
+      .maybeSingle();
     const savedPos: Record<string,Pos> = layout?.positions || {};
     const savedCtrl: Record<string,Pos> = layout?.ctrl_points || {};
     if(Object.keys(savedCtrl).length) setCtrlPts(savedCtrl);
