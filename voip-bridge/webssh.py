@@ -16,6 +16,7 @@ Usage frontend :
   ou WebSocket direct : ws://SERVER/webssh/ssh/1.2.3.4/ws
 """
 import asyncio, subprocess, re, time, logging, sys, os, shutil
+from typing import Optional
 
 try:
     from aiohttp import web, ClientSession, WSMsgType, ClientConnectorError
@@ -48,11 +49,7 @@ USER_RE = re.compile(r"^[a-zA-Z0-9_\-]{1,32}$")
 
 
 # ── Création / réutilisation d'une session ttyd ───────────────────────────────
-async def get_or_create_ttyd(ip: str, ssh_user: str = "root") -> int:
-    raise RuntimeError("get_or_create_ttyd() signature has changed; call get_or_create_ttyd(ip, user, password)")
-
-
-async def get_or_create_ttyd(ip: str, ssh_user: str = "root", ssh_password: str | None = None) -> int:
+async def get_or_create_ttyd(ip: str, ssh_user: str = "root", ssh_password: Optional[str] = None) -> int:
     """Retourne le port loopback du processus ttyd pour cet IP/user (créé si absent/mort).
 
     Si ssh_password est fourni, utilise sshpass (-e + SSHPASS env) pour permettre auth password non-interactive.
@@ -119,7 +116,7 @@ async def get_or_create_ttyd(ip: str, ssh_user: str = "root", ssh_password: str 
         env=env,
     )
 
-    procs[session_key] = {"proc": proc, "port": port, "last_used": time.time()}
+    procs[session_key] = {"proc": proc, "port": port, "last_used": time.time(), "log_fd": ttyd_log}
     log.info(f"ttyd démarré pour {ssh_user}@{ip} ({auth_tag}) sur 127.0.0.1:{port}")
 
     # CORRECTION : asyncio.sleep au lieu de time.sleep (non bloquant)
@@ -136,6 +133,12 @@ async def cleanup_loop():
             if now - procs[session_key].get("last_used", 0) > 600:
                 try:
                     procs[session_key]["proc"].terminate()
+                except Exception:
+                    pass
+                try:
+                    fd = procs[session_key].get("log_fd")
+                    if fd:
+                        fd.close()
                 except Exception:
                     pass
                 del procs[session_key]
@@ -268,7 +271,7 @@ async def main():
     app.router.add_get("/ssh/{ip}/{path:.*}", handle_ssh)
     app.router.add_get("/health",             handle_health)
     app.router.add_get("/",                   handle_health)
-    asyncio.ensure_future(cleanup_loop())
+    asyncio.create_task(cleanup_loop())
     runner = web.AppRunner(app)
     await runner.setup()
     await web.TCPSite(runner, "0.0.0.0", 9061).start()
