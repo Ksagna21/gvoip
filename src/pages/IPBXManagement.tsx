@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { StatusBadge } from "@/components/noc/StatusBadge";
 import { Server, Plus, Pencil, Trash2, Wifi, WifiOff, Search, Terminal, ExternalLink, Navigation } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
@@ -38,6 +37,10 @@ interface Country {
 }
 
 const IPBX_TYPES = ["FreePBX", "Asterisk", "Issabel", "3CX", "FusionPBX", "Autre"];
+
+/** Doit correspondre au proxy webssh (routing /ssh/{ipv4}/ uniquement). */
+const IPV4_RE =
+  /^(?:(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d?\d)$/;
 
 const emptyForm = {
   name: "", ip_address: "", type: "FreePBX", country_id: "",
@@ -175,9 +178,32 @@ const IPBXManagement = () => {
   };
 
   const openWebSSH = (i: IPBX) => {
-    const ip = i.ip_address || i.host;
-    const user = i.ssh_user || "root";
-    window.open(`${window.location.origin}/webssh/ssh/${ip}/?user=${user}`, "_blank");
+    const ip = (i.ip_address || i.host || "").trim();
+    if (!ip) {
+      toast({
+        title: "SSH indisponible",
+        description: "Aucune adresse IP renseignée pour cet IPBX.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!IPV4_RE.test(ip)) {
+      toast({
+        title: "SSH indisponible",
+        description:
+          "Le terminal WebSSH attend une adresse IPv4. Renseignez le champ IP ou utilisez une IP numérique dans « hôte ».",
+        variant: "destructive",
+      });
+      return;
+    }
+    const user = (i.ssh_user || "root").trim() || "root";
+    const q = new URLSearchParams();
+    q.set("user", user);
+    // Ne pas passer ssh_password dans l’URL (historique navigateur, journaux, referrers).
+    // Auth SSH : clé sur le serveur GVoIP ou flux dédié sécurisé à prévoir côté backend.
+    const qs = q.toString();
+    const url = `${window.location.origin}/webssh/ssh/${ip}/${qs ? `?${qs}` : ""}`;
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const openGui = (i: IPBX) => {
