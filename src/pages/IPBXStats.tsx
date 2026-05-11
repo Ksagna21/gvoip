@@ -59,7 +59,9 @@ interface IPBXStatsProps {
  * En production    : votre domaine / reverse-proxy (ex: /ami-proxy)
  */
 const AMI_PROXY_URL =
-  (import.meta as any).env?.VITE_AMI_PROXY_URL ?? "http://localhost:3001";
+  (import.meta as any).env?.VITE_AMI_PROXY_URL ??
+  // En prod: même origine (à utiliser avec un reverse-proxy Nginx: /ami-proxy)
+  (typeof window !== "undefined" && window.location.hostname !== "localhost" ? "" : "http://localhost:3001");
 
 /* ─── Helpers ────────────────────────────────────────────────────── */
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
