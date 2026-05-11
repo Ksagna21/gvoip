@@ -39,7 +39,6 @@ interface Country {
 
 const IPBX_TYPES = ["FreePBX", "Asterisk", "Issabel", "3CX", "FusionPBX", "Autre"];
 
-/** Doit correspondre au proxy webssh (routing /ssh/{ipv4}/ uniquement). */
 const IPV4_RE =
   /^(?:(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d?\d)$/;
 
@@ -54,6 +53,7 @@ const IPBXManagement = () => {
   const { isAdmin, user } = useAuth();
   const { toast } = useToast();
 
+  // ── Tous les hooks en premier, sans condition ────────────────────
   const [ipbxList, setIpbxList] = useState<IPBX[]>([]);
   const [countries, setCountries] = useState<Country[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,17 +68,20 @@ const IPBXManagement = () => {
   const [configuring, setConfiguring] = useState(false);
   const [selectedIPBX, setSelectedIPBX] = useState<IPBX | null>(null);
 
-  // ── Si un IPBX est sélectionné, afficher la page stats ──────────
-  if (selectedIPBX) {
-    return <IPBXStats ipbx={selectedIPBX} onBack={() => setSelectedIPBX(null)} />;
-  }
+  useEffect(() => {
+    const h = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(h);
+  }, [search]);
 
+  useEffect(() => { fetchData(); }, [isAdmin, user, page, debouncedSearch]);
+
+  // ── Fonctions ────────────────────────────────────────────────────
   const fetchData = async () => {
     setLoading(true);
     const countryRes = await supabase.from("countries").select("id, name, code").order("name");
     if (countryRes.data) setCountries(countryRes.data as Country[]);
 
-    let query: any = supabase.from("ipbx").select("*, countries(name, code)", { count: 'exact' });
+    let query: any = supabase.from("ipbx").select("*, countries(name, code)", { count: "exact" });
     if (!isAdmin) {
       if (!user) { setIpbxList([]); setTotalCount(0); setLoading(false); return; }
       const { data: uiData } = await (supabase.from("user_ipbx" as any) as any)
@@ -93,13 +96,6 @@ const IPBXManagement = () => {
     if (count !== null) setTotalCount(count);
     setLoading(false);
   };
-
-  useEffect(() => {
-    const h = setTimeout(() => setDebouncedSearch(search), 300);
-    return () => clearTimeout(h);
-  }, [search]);
-
-  useEffect(() => { fetchData(); }, [isAdmin, user, page, debouncedSearch]);
 
   const handleAutoConfig = async () => {
     if (!form.ip_address || !form.ami_user || !form.ami_password) {
@@ -186,25 +182,20 @@ const IPBXManagement = () => {
   const openWebSSH = (i: IPBX) => {
     const ip = (i.ip_address || i.host || "").trim();
     if (!ip) {
-      toast({
-        title: "SSH indisponible",
-        description: "Aucune adresse IP renseignée pour cet IPBX.",
-        variant: "destructive",
-      });
+      toast({ title: "SSH indisponible", description: "Aucune adresse IP renseignée pour cet IPBX.", variant: "destructive" });
       return;
     }
     if (!IPV4_RE.test(ip)) {
       toast({
         title: "SSH indisponible",
-        description:
-          "Le terminal WebSSH attend une adresse IPv4. Renseignez le champ IP ou utilisez une IP numérique dans « hôte ».",
+        description: "Le terminal WebSSH attend une adresse IPv4. Renseignez le champ IP ou utilisez une IP numérique dans « hôte ».",
         variant: "destructive",
       });
       return;
     }
-    const user = (i.ssh_user || "root").trim() || "root";
+    const sshUser = (i.ssh_user || "root").trim() || "root";
     const q = new URLSearchParams();
-    q.set("user", user);
+    q.set("user", sshUser);
     const qs = q.toString();
     const url = `${window.location.origin}/webssh/ssh/${ip}/${qs ? `?${qs}` : ""}`;
     window.open(url, "_blank", "noopener,noreferrer");
@@ -222,6 +213,12 @@ const IPBXManagement = () => {
     return "text-muted-foreground";
   };
 
+  // ── Early return APRÈS tous les hooks ───────────────────────────
+  if (selectedIPBX) {
+    return <IPBXStats ipbx={selectedIPBX} onBack={() => setSelectedIPBX(null)} />;
+  }
+
+  // ── Rendu liste ──────────────────────────────────────────────────
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -231,7 +228,6 @@ const IPBXManagement = () => {
           <p className="text-sm text-muted-foreground">Gestion des autocommutateurs IP</p>
         </div>
         <div className="flex gap-2">
-          {/* Bouton Patton SBC */}
           <Button
             variant="outline"
             size="sm"
@@ -251,7 +247,6 @@ const IPBXManagement = () => {
                 </DialogHeader>
                 <div className="space-y-4 mt-2">
 
-                  {/* Infos générales */}
                   <div className="p-3 rounded-lg bg-muted/20 space-y-3">
                     <p className="text-xs font-semibold text-muted-foreground uppercase">Informations générales</p>
                     <div><Label>Nom *</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="FreePBX-Lomé-01" className="mt-1" /></div>
@@ -272,7 +267,6 @@ const IPBXManagement = () => {
                     </div>
                   </div>
 
-                  {/* SSH */}
                   <div className="p-3 rounded-lg bg-muted/20 space-y-3">
                     <p className="text-xs font-semibold text-muted-foreground uppercase">Accès SSH</p>
                     <div className="grid grid-cols-2 gap-3">
@@ -284,7 +278,6 @@ const IPBXManagement = () => {
                     )}
                   </div>
 
-                  {/* API GraphQL */}
                   <div className="p-3 rounded-lg bg-muted/20 space-y-3">
                     <p className="text-xs font-semibold text-muted-foreground uppercase">API GraphQL (optionnel)</p>
                     <div><Label>URL API</Label><Input value={form.api_url} onChange={(e) => setForm({ ...form, api_url: e.target.value })} placeholder="http://192.168.1.75/admin/api/api/gql" className="mt-1" /></div>
@@ -292,7 +285,6 @@ const IPBXManagement = () => {
                     <div><Label>Client Secret</Label><Input type="password" value={form.api_password} onChange={(e) => setForm({ ...form, api_password: e.target.value })} placeholder="••••••••" className="mt-1" /></div>
                   </div>
 
-                  {/* AMI */}
                   <div className="p-3 rounded-lg bg-muted/20 space-y-3">
                     <p className="text-xs font-semibold text-muted-foreground uppercase">Asterisk AMI (appels temps réel)</p>
                     <div className="grid grid-cols-2 gap-3">
@@ -360,7 +352,6 @@ const IPBXManagement = () => {
                 </div>
 
                 <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                  {/* Bouton Stats */}
                   <Button
                     variant="outline"
                     size="sm"
@@ -369,8 +360,6 @@ const IPBXManagement = () => {
                   >
                     <BarChart2 size={13} /> Stats
                   </Button>
-
-                  {/* Bouton WebSSH */}
                   <Button
                     variant="outline"
                     size="sm"
@@ -387,7 +376,6 @@ const IPBXManagement = () => {
                   >
                     <Navigation size={13} /> GUI
                   </Button>
-
                   {isAdmin && (
                     <>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(i)}><Pencil size={14} /></Button>
@@ -409,7 +397,6 @@ const IPBXManagement = () => {
           <Button size="sm" variant="outline" disabled={(page + 1) * pageSize >= (totalCount || 0)} onClick={() => setPage(p => p + 1)}>Suivant</Button>
         </div>
       )}
-
     </div>
   );
 };
