@@ -1,8 +1,9 @@
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft, RefreshCw, Cpu, HardDrive, Thermometer,
   MemoryStick, AlertTriangle, CheckCircle2, XCircle, Wifi,
+  PhoneCall, Users,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -28,6 +29,7 @@ export interface IPBX {
 }
 
 interface SystemStats {
+  // Système
   cpu: number;
   ram_used: number;
   ram_total: number;
@@ -36,6 +38,12 @@ interface SystemStats {
   temperature: number;
   uptime: string;
   load_avg: string;
+  // Asterisk (données AMI réelles)
+  active_calls: number;
+  processed_calls: number;
+  asterisk_version: string;
+  sip_peers_total: number;
+  sip_peers_online: number;
   timestamp: string;
 }
 
@@ -43,6 +51,15 @@ interface IPBXStatsProps {
   ipbx: IPBX;
   onBack: () => void;
 }
+
+/* ─── Config proxy AMI ───────────────────────────────────────────── */
+/**
+ * URL du proxy Node.js (ami-stats-server.js).
+ * En développement : http://localhost:3001
+ * En production    : votre domaine / reverse-proxy (ex: /ami-proxy)
+ */
+const AMI_PROXY_URL =
+  (import.meta as any).env?.VITE_AMI_PROXY_URL ?? "http://localhost:3001";
 
 /* ─── Helpers ────────────────────────────────────────────────────── */
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -64,7 +81,7 @@ function ArcGauge({
   value, label, sublabel, icon, level, unit = "%",
 }: {
   value: number; label: string; sublabel?: string;
-  icon: React.ReactNode; level: "ok" | "warn" | "crit"; unit?: string;
+  icon: ReactNode; level: "ok" | "warn" | "crit"; unit?: string;
 }) {
   const { stroke, glow, text, bg } = COLORS[level];
   const SIZE = 140;
@@ -98,23 +115,10 @@ function ArcGauge({
       style={{ background: `radial-gradient(ellipse at 50% 0%, ${glow} 0%, transparent 70%)` }}
     >
       <svg width={SIZE} height={SIZE} overflow="visible">
+        <path d={arc(START, START + SWEEP)} fill="none" stroke="hsl(var(--border))" strokeWidth={8} strokeLinecap="round" />
         <path
-          d={arc(START, START + SWEEP)}
-          fill="none"
-          stroke="hsl(var(--border))"
-          strokeWidth={8}
-          strokeLinecap="round"
-        />
-        <path
-          d={arc(START, angle)}
-          fill="none"
-          stroke={stroke}
-          strokeWidth={8}
-          strokeLinecap="round"
-          style={{
-            filter: `drop-shadow(0 0 5px ${stroke})`,
-            transition: "all 0.9s cubic-bezier(0.34,1.4,0.64,1)",
-          }}
+          d={arc(START, angle)} fill="none" stroke={stroke} strokeWidth={8} strokeLinecap="round"
+          style={{ filter: `drop-shadow(0 0 5px ${stroke})`, transition: "all 0.9s cubic-bezier(0.34,1.4,0.64,1)" }}
         />
         <foreignObject x={cx - 12} y={cy - 30} width={24} height={24}>
           <div style={{ color: stroke, display: "flex" }}>{icon}</div>
@@ -135,7 +139,7 @@ function ArcGauge({
 /* ─── Horizontal Bar ─────────────────────────────────────────────── */
 function HBar({ label, value, max, unit, level, icon }: {
   label: string; value: number; max: number;
-  unit: string; level: "ok" | "warn" | "crit"; icon: React.ReactNode;
+  unit: string; level: "ok" | "warn" | "crit"; icon: ReactNode;
 }) {
   const { stroke, text } = COLORS[level];
   const pct = Math.min((value / max) * 100, 100);
@@ -159,7 +163,7 @@ function HBar({ label, value, max, unit, level, icon }: {
           <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
         </div>
         <span className={`text-[11px] font-mono ${text}`}>
-          {value.toFixed(1)} / {max} {unit}
+          {typeof value === "number" ? value.toFixed(1) : value} / {max} {unit}
         </span>
       </div>
       <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
@@ -174,7 +178,7 @@ function HBar({ label, value, max, unit, level, icon }: {
 
 /* ─── Status Badge ───────────────────────────────────────────────── */
 function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, { icon: React.ReactNode; label: string; cls: string }> = {
+  const map: Record<string, { icon: ReactNode; label: string; cls: string }> = {
     online:  { icon: <CheckCircle2 size={12} />, label: "En ligne",   cls: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/30" },
     offline: { icon: <XCircle size={12} />,      label: "Hors ligne", cls: "text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/30" },
     error:   { icon: <AlertTriangle size={12} />, label: "Erreur",    cls: "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/30" },
@@ -191,28 +195,50 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-/* ─── fetchStats — remplacer par votre API réelle ────────────────── */
+/* ─── Stat Card (Appels / Peers) ─────────────────────────────────── */
+function StatCard({ label, value, sub, icon, color }: {
+  label: string; value: number | string; sub?: string;
+  icon: ReactNode; color: string;
+}) {
+  return (
+    <div
+      className="noc-card border border-border px-4 py-4 flex items-center gap-3"
+      style={{ background: `radial-gradient(ellipse at 0% 50%, ${color}18 0%, transparent 60%)` }}
+    >
+      <div className="p-2 rounded-xl" style={{ background: `${color}20`, color }}>
+        {icon}
+      </div>
+      <div>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider">{label}</p>
+        <p className="text-xl font-mono font-bold" style={{ color }}>{value}</p>
+        {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
+      </div>
+    </div>
+  );
+}
+
+/* ─── fetchStats — appel réel vers le proxy AMI ──────────────────── */
 async function fetchStats(ipbx: IPBX): Promise<SystemStats> {
-  // TODO: remplacer par votre endpoint :
-  // const res = await fetch(`/api/ipbx/${ipbx.id}/stats`);
-  // if (!res.ok) throw new Error("Erreur serveur");
-  // return res.json();
-  await new Promise((r) => setTimeout(r, 600));
-  const seed = ipbx.id.charCodeAt(0) + (Date.now() % 30);
-  const n = (range: number, offset = 0) =>
-    Math.max(0, Math.min(100, offset + Math.sin(seed * 0.1 + Date.now() * 0.00003) * range + range * 0.5));
-  const ram_total = 8, storage_total = 100;
-  return {
-    cpu: Math.round(n(60, 10)),
-    ram_used: Math.min(parseFloat(n(5, 1.5).toFixed(1)), ram_total),
-    ram_total,
-    storage_used: Math.min(parseFloat(n(30, 20).toFixed(1)), storage_total),
-    storage_total,
-    temperature: Math.round(n(35, 38)),
-    uptime: "14d 07h 43m",
-    load_avg: "0.42 0.55 0.61",
-    timestamp: new Date().toLocaleTimeString("fr-FR"),
-  };
+  const res = await fetch(`${AMI_PROXY_URL}/api/ipbx/stats`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      host:         ipbx.ip_address || ipbx.host,
+      ami_port:     ipbx.ami_port   || 5038,
+      ami_user:     ipbx.ami_user,
+      ami_password: ipbx.ami_password,
+      ssh_user:     ipbx.ssh_user,
+      ssh_password: ipbx.ssh_password,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    throw new Error(err.error || `Erreur serveur (${res.status})`);
+  }
+
+  const data = await res.json();
+  return data as SystemStats;
 }
 
 /* ─── Main ───────────────────────────────────────────────────────── */
@@ -229,7 +255,7 @@ const IPBXStats = ({ ipbx, onBack }: IPBXStatsProps) => {
     try {
       setStats(await fetchStats(ipbx));
     } catch (e: any) {
-      setError(e?.message || "Impossible de récupérer les statistiques");
+      setError(e?.message || "Impossible de récupérer les statistiques AMI");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -239,34 +265,24 @@ const IPBXStats = ({ ipbx, onBack }: IPBXStatsProps) => {
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
     if (!autoRefresh) return;
-    const id = setInterval(() => load(true), 10000);
+    const id = setInterval(() => load(true), 10_000);
     return () => clearInterval(id);
   }, [autoRefresh, load]);
 
-  const ramPct       = stats ? (stats.ram_used / stats.ram_total) * 100 : 0;
-  const storagePct   = stats ? (stats.storage_used / stats.storage_total) * 100 : 0;
+  const ramPct       = stats ? (stats.ram_used / (stats.ram_total || 8)) * 100 : 0;
+  const storagePct   = stats ? (stats.storage_used / (stats.storage_total || 100)) * 100 : 0;
   const cpuLevel     = stats ? getLevel(stats.cpu) : "ok";
   const ramLevel     = getLevel(ramPct);
   const storageLevel = getLevel(storagePct);
   const tempLevel    = stats ? getLevel(stats.temperature, 65, 80) : "ok";
 
-  /*
-   * Aucun fond propre, aucun padding, aucune contrainte de largeur.
-   * Le composant s'insère dans le layout parent exactement comme
-   * IPBXManagement : racine = <div className="space-y-6">.
-   */
   return (
     <div className="space-y-6">
 
-      {/* Header — même structure et tailles que IPBXManagement */}
+      {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 border border-border hover:border-primary/40"
-            onClick={onBack}
-          >
+          <Button variant="ghost" size="icon" className="h-9 w-9 border border-border hover:border-primary/40" onClick={onBack}>
             <ArrowLeft size={16} />
           </Button>
           <div>
@@ -277,6 +293,7 @@ const IPBXStats = ({ ipbx, onBack }: IPBXStatsProps) => {
             <p className="text-sm text-muted-foreground">
               {ipbx.type} · {ipbx.ip_address || ipbx.host}
               {ipbx.countries ? ` · ${ipbx.countries.name}` : ""}
+              {stats?.asterisk_version ? ` · Asterisk ${stats.asterisk_version}` : ""}
             </p>
           </div>
         </div>
@@ -293,8 +310,7 @@ const IPBXStats = ({ ipbx, onBack }: IPBXStatsProps) => {
             {autoRefresh ? "● Live" : "⏸ Pause"}
           </button>
           <Button
-            variant="outline"
-            size="sm"
+            variant="outline" size="sm"
             onClick={() => { setRefreshing(true); load(true); }}
             disabled={refreshing || loading}
           >
@@ -304,19 +320,23 @@ const IPBXStats = ({ ipbx, onBack }: IPBXStatsProps) => {
         </div>
       </div>
 
-      {/* Error */}
+      {/* ── Erreur ── */}
       <AnimatePresence>
         {error && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="flex items-center gap-3 p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400 text-sm"
           >
-            <AlertTriangle size={16} /> {error}
+            <AlertTriangle size={16} />
+            <div>
+              <p className="font-semibold">Erreur de connexion AMI</p>
+              <p className="text-xs mt-0.5 opacity-80">{error}</p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Skeleton */}
+      {/* ── Skeleton ── */}
       {loading && !stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
@@ -325,10 +345,47 @@ const IPBXStats = ({ ipbx, onBack }: IPBXStatsProps) => {
         </div>
       )}
 
-      {/* Gauges */}
+      {/* ── Cartes Asterisk (appels & peers) ── */}
       {stats && (
         <motion.div
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-3"
+        >
+          <StatCard
+            label="Appels actifs"
+            value={stats.active_calls}
+            sub="canaux en cours"
+            icon={<PhoneCall size={18} />}
+            color="#22d3ee"
+          />
+          <StatCard
+            label="Appels traités"
+            value={stats.processed_calls.toLocaleString("fr-FR")}
+            sub="depuis le démarrage"
+            icon={<PhoneCall size={18} />}
+            color="#a78bfa"
+          />
+          <StatCard
+            label="Peers SIP"
+            value={`${stats.sip_peers_online} / ${stats.sip_peers_total}`}
+            sub="enregistrés / total"
+            icon={<Users size={18} />}
+            color="#34d399"
+          />
+          <StatCard
+            label="Uptime"
+            value={stats.uptime || "—"}
+            sub="depuis dernier redémarrage"
+            icon={<CheckCircle2 size={18} />}
+            color="#f59e0b"
+          />
+        </motion.div>
+      )}
+
+      {/* ── Gauges système ── */}
+      {stats && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.05 }}
           className="grid grid-cols-2 md:grid-cols-4 gap-4"
         >
           <ArcGauge value={stats.cpu} label="CPU"
@@ -346,33 +403,33 @@ const IPBXStats = ({ ipbx, onBack }: IPBXStatsProps) => {
         </motion.div>
       )}
 
-      {/* Détail barres */}
+      {/* ── Barres détail ── */}
       {stats && (
         <motion.div
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.07 }}
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.1 }}
           className="noc-card border border-border p-5 space-y-4"
         >
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             Détail des ressources
           </p>
-          <HBar label="CPU"         value={stats.cpu}          max={100}                 unit="%"  level={cpuLevel}     icon={<Cpu size={13} />} />
-          <HBar label="RAM"         value={stats.ram_used}     max={stats.ram_total}     unit="Go" level={ramLevel}     icon={<MemoryStick size={13} />} />
-          <HBar label="Stockage"    value={stats.storage_used} max={stats.storage_total} unit="Go" level={storageLevel} icon={<HardDrive size={13} />} />
-          <HBar label="Température" value={stats.temperature}  max={100}                 unit="°C" level={tempLevel}    icon={<Thermometer size={13} />} />
+          <HBar label="CPU"         value={stats.cpu}          max={100}                  unit="%"  level={cpuLevel}     icon={<Cpu size={13} />} />
+          <HBar label="RAM"         value={stats.ram_used}     max={stats.ram_total || 8} unit="Go" level={ramLevel}     icon={<MemoryStick size={13} />} />
+          <HBar label="Stockage"    value={stats.storage_used} max={stats.storage_total || 100} unit="Go" level={storageLevel} icon={<HardDrive size={13} />} />
+          <HBar label="Température" value={stats.temperature}  max={100}                  unit="°C" level={tempLevel}    icon={<Thermometer size={13} />} />
         </motion.div>
       )}
 
-      {/* Info cards */}
+      {/* ── Info cards bas de page ── */}
       {stats && (
         <motion.div
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.13 }}
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.15 }}
           className="grid grid-cols-2 md:grid-cols-4 gap-3"
         >
           {[
-            { label: "Uptime",      value: stats.uptime },
-            { label: "Load avg",    value: stats.load_avg },
-            { label: "Température", value: `${stats.temperature} °C` },
-            { label: "Mis à jour",  value: stats.timestamp },
+            { label: "Load avg",        value: stats.load_avg },
+            { label: "Asterisk",        value: stats.asterisk_version || "—" },
+            { label: "Température",     value: `${stats.temperature} °C` },
+            { label: "Mis à jour",      value: stats.timestamp },
           ].map(({ label, value }) => (
             <div key={label} className="noc-card border border-border px-4 py-3">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
@@ -382,7 +439,7 @@ const IPBXStats = ({ ipbx, onBack }: IPBXStatsProps) => {
         </motion.div>
       )}
 
-      {/* Légende */}
+      {/* ── Légende ── */}
       <div className="flex items-center gap-5 text-xs text-muted-foreground font-mono">
         {[
           { level: "ok",   label: "Normal < 60%"    },
