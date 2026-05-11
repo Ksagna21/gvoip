@@ -81,6 +81,7 @@ function ArcGauge({
   };
   const angle = START + (Math.min(value, 100) / 100) * SWEEP;
   const [disp, setDisp] = useState(0);
+
   useEffect(() => {
     const t0 = performance.now();
     const frame = (now: number) => {
@@ -97,7 +98,6 @@ function ArcGauge({
       style={{ background: `radial-gradient(ellipse at 50% 0%, ${glow} 0%, transparent 70%)` }}
     >
       <svg width={SIZE} height={SIZE} overflow="visible">
-        {/* Track arc — uses border color from theme */}
         <path
           d={arc(START, START + SWEEP)}
           fill="none"
@@ -105,14 +105,16 @@ function ArcGauge({
           strokeWidth={8}
           strokeLinecap="round"
         />
-        {/* Value arc */}
         <path
           d={arc(START, angle)}
           fill="none"
           stroke={stroke}
           strokeWidth={8}
           strokeLinecap="round"
-          style={{ filter: `drop-shadow(0 0 5px ${stroke})`, transition: "all 0.9s cubic-bezier(0.34,1.4,0.64,1)" }}
+          style={{
+            filter: `drop-shadow(0 0 5px ${stroke})`,
+            transition: "all 0.9s cubic-bezier(0.34,1.4,0.64,1)",
+          }}
         />
         <foreignObject x={cx - 12} y={cy - 30} width={24} height={24}>
           <div style={{ color: stroke, display: "flex" }}>{icon}</div>
@@ -138,6 +140,7 @@ function HBar({ label, value, max, unit, level, icon }: {
   const { stroke, text } = COLORS[level];
   const pct = Math.min((value / max) * 100, 100);
   const [disp, setDisp] = useState(0);
+
   useEffect(() => {
     const t0 = performance.now();
     const frame = (now: number) => {
@@ -176,7 +179,11 @@ function StatusBadge({ status }: { status: string }) {
     offline: { icon: <XCircle size={12} />,      label: "Hors ligne", cls: "text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/30" },
     error:   { icon: <AlertTriangle size={12} />, label: "Erreur",    cls: "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/30" },
   };
-  const s = map[status] ?? { icon: <Wifi size={12} />, label: status || "Inconnu", cls: "text-muted-foreground bg-muted/30 border-border" };
+  const s = map[status] ?? {
+    icon: <Wifi size={12} />,
+    label: status || "Inconnu",
+    cls: "text-muted-foreground bg-muted/30 border-border",
+  };
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${s.cls}`}>
       {s.icon} {s.label}
@@ -210,10 +217,10 @@ async function fetchStats(ipbx: IPBX): Promise<SystemStats> {
 
 /* ─── Main ───────────────────────────────────────────────────────── */
 const IPBXStats = ({ ipbx, onBack }: IPBXStatsProps) => {
-  const [stats, setStats]           = useState<SystemStats | null>(null);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [stats, setStats]             = useState<SystemStats | null>(null);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState<string | null>(null);
+  const [refreshing, setRefreshing]   = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   const load = useCallback(async (silent = false) => {
@@ -243,165 +250,152 @@ const IPBXStats = ({ ipbx, onBack }: IPBXStatsProps) => {
   const storageLevel = getLevel(storagePct);
   const tempLevel    = stats ? getLevel(stats.temperature, 65, 80) : "ok";
 
+  /*
+   * Aucun fond propre, aucun padding, aucune contrainte de largeur.
+   * Le composant s'insère dans le layout parent exactement comme
+   * IPBXManagement : racine = <div className="space-y-6">.
+   */
   return (
-    /* Suppression de min-h-screen et bg fixe — le composant s'adapte
-       à l'espace donné par son parent et hérite du thème via bg-background */
-    <div className="h-full w-full bg-background text-foreground overflow-auto">
+    <div className="space-y-6">
 
-      {/* Ambient subtil — adapté aux deux modes */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden -z-0">
-        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-cyan-500/5 blur-3xl dark:bg-cyan-500/5 opacity-60" />
-        <div className="absolute top-1/2 -right-24 w-72 h-72 rounded-full bg-blue-600/5 blur-3xl dark:bg-blue-600/5 opacity-60" />
-        {/* Grille légère */}
-        <svg className="absolute inset-0 w-full h-full opacity-[0.03] dark:opacity-[0.025]">
-          <defs>
-            <pattern id="g" width="32" height="32" patternUnits="userSpaceOnUse">
-              <path d="M 32 0 L 0 0 0 32" fill="none" stroke="currentColor" strokeWidth="0.5" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#g)" />
-        </svg>
-      </div>
-
-      <div className="relative z-10 max-w-4xl mx-auto px-4 py-6 space-y-5">
-
-        {/* Header */}
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 rounded-xl border border-border hover:border-cyan-400/40 hover:text-cyan-500"
-              onClick={onBack}
-            >
-              <ArrowLeft size={16} />
-            </Button>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold tracking-tight font-mono">{ipbx.name}</h1>
-                <StatusBadge status={ipbx.status} />
-              </div>
-              <p className="text-xs text-muted-foreground mt-0.5 font-mono">
-                {ipbx.type} · {ipbx.ip_address || ipbx.host}{ipbx.countries ? ` · ${ipbx.countries.name}` : ""}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => setAutoRefresh((v) => !v)}
-              className={`text-[11px] px-3 py-1.5 rounded-lg border font-mono transition-all ${
-                autoRefresh
-                  ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-500 dark:text-cyan-400"
-                  : "border-border text-muted-foreground hover:border-border/60"
-              }`}
-            >
-              {autoRefresh ? "● Live" : "⏸ Pause"}
-            </button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 text-xs font-mono hover:border-cyan-400/40 hover:text-cyan-500"
-              onClick={() => { setRefreshing(true); load(true); }}
-              disabled={refreshing || loading}
-            >
-              <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
-              Actualiser
-            </Button>
-          </div>
-        </motion.div>
-
-        {/* Error */}
-        <AnimatePresence>
-          {error && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="flex items-center gap-3 p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400 text-sm">
-              <AlertTriangle size={16} /> {error}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Skeleton */}
-        {loading && !stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-48 rounded-2xl bg-muted/40 animate-pulse" />
-            ))}
-          </div>
-        )}
-
-        {/* Gauges */}
-        {stats && (
-          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <ArcGauge value={stats.cpu} label="CPU"
-                sublabel={`Load: ${stats.load_avg.split(" ")[0]}`}
-                icon={<Cpu size={20} />} level={cpuLevel} />
-              <ArcGauge value={Math.round(ramPct)} label="RAM"
-                sublabel={`${stats.ram_used.toFixed(1)} / ${stats.ram_total} Go`}
-                icon={<MemoryStick size={20} />} level={ramLevel} />
-              <ArcGauge value={Math.round(storagePct)} label="Stockage"
-                sublabel={`${stats.storage_used.toFixed(0)} / ${stats.storage_total} Go`}
-                icon={<HardDrive size={20} />} level={storageLevel} />
-              <ArcGauge value={stats.temperature} label="Température"
-                sublabel={`${stats.temperature} °C`}
-                icon={<Thermometer size={20} />} level={tempLevel} unit="°C" />
-            </div>
-          </motion.div>
-        )}
-
-        {/* Bars */}
-        {stats && (
-          <motion.div
-            initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.08 }}
-            className="rounded-2xl border border-border bg-muted/20 p-5 space-y-4"
+      {/* Header — même structure et tailles que IPBXManagement */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 border border-border hover:border-primary/40"
+            onClick={onBack}
           >
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-              Détail des ressources
+            <ArrowLeft size={16} />
+          </Button>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-foreground">{ipbx.name}</h1>
+              <StatusBadge status={ipbx.status} />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {ipbx.type} · {ipbx.ip_address || ipbx.host}
+              {ipbx.countries ? ` · ${ipbx.countries.name}` : ""}
             </p>
-            <HBar label="CPU"         value={stats.cpu}          max={100}                 unit="%"  level={cpuLevel}     icon={<Cpu size={13} />} />
-            <HBar label="RAM"         value={stats.ram_used}     max={stats.ram_total}     unit="Go" level={ramLevel}     icon={<MemoryStick size={13} />} />
-            <HBar label="Stockage"    value={stats.storage_used} max={stats.storage_total} unit="Go" level={storageLevel} icon={<HardDrive size={13} />} />
-            <HBar label="Température" value={stats.temperature}  max={100}                 unit="°C" level={tempLevel}    icon={<Thermometer size={13} />} />
-          </motion.div>
-        )}
-
-        {/* Info cards */}
-        {stats && (
-          <motion.div
-            initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.14 }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-3"
-          >
-            {[
-              { label: "Uptime",      value: stats.uptime },
-              { label: "Load avg",    value: stats.load_avg },
-              { label: "Température", value: `${stats.temperature} °C` },
-              { label: "Mis à jour",  value: stats.timestamp },
-            ].map(({ label, value }) => (
-              <div key={label} className="rounded-xl border border-border bg-muted/20 px-4 py-3">
-                <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider mb-1">{label}</p>
-                <p className="text-xs font-mono text-foreground/80 truncate">{value}</p>
-              </div>
-            ))}
-          </motion.div>
-        )}
-
-        {/* Legend */}
-        <div className="flex items-center gap-5 text-[10px] text-muted-foreground/60 font-mono">
-          {[
-            { level: "ok",   label: "Normal < 60%"     },
-            { level: "warn", label: "Attention 60–85%"  },
-            { level: "crit", label: "Critique > 85%"   },
-          ].map(({ level, label }) => (
-            <span key={level} className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full" style={{ background: COLORS[level as "ok"].stroke }} />
-              {label}
-            </span>
-          ))}
+          </div>
         </div>
 
+        <div className="flex gap-2">
+          <button
+            onClick={() => setAutoRefresh((v) => !v)}
+            className={`text-[11px] px-3 py-1.5 rounded-lg border font-mono transition-all ${
+              autoRefresh
+                ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-500 dark:text-cyan-400"
+                : "border-border text-muted-foreground hover:border-border/60"
+            }`}
+          >
+            {autoRefresh ? "● Live" : "⏸ Pause"}
+          </button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => { setRefreshing(true); load(true); }}
+            disabled={refreshing || loading}
+          >
+            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+            Actualiser
+          </Button>
+        </div>
       </div>
+
+      {/* Error */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="flex items-center gap-3 p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400 text-sm"
+          >
+            <AlertTriangle size={16} /> {error}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Skeleton */}
+      {loading && !stats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-48 rounded-2xl bg-muted/40 animate-pulse" />
+          ))}
+        </div>
+      )}
+
+      {/* Gauges */}
+      {stats && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4"
+        >
+          <ArcGauge value={stats.cpu} label="CPU"
+            sublabel={`Load: ${stats.load_avg.split(" ")[0]}`}
+            icon={<Cpu size={20} />} level={cpuLevel} />
+          <ArcGauge value={Math.round(ramPct)} label="RAM"
+            sublabel={`${stats.ram_used.toFixed(1)} / ${stats.ram_total} Go`}
+            icon={<MemoryStick size={20} />} level={ramLevel} />
+          <ArcGauge value={Math.round(storagePct)} label="Stockage"
+            sublabel={`${stats.storage_used.toFixed(0)} / ${stats.storage_total} Go`}
+            icon={<HardDrive size={20} />} level={storageLevel} />
+          <ArcGauge value={stats.temperature} label="Température"
+            sublabel={`${stats.temperature} °C`}
+            icon={<Thermometer size={20} />} level={tempLevel} unit="°C" />
+        </motion.div>
+      )}
+
+      {/* Détail barres */}
+      {stats && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.07 }}
+          className="noc-card border border-border p-5 space-y-4"
+        >
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Détail des ressources
+          </p>
+          <HBar label="CPU"         value={stats.cpu}          max={100}                 unit="%"  level={cpuLevel}     icon={<Cpu size={13} />} />
+          <HBar label="RAM"         value={stats.ram_used}     max={stats.ram_total}     unit="Go" level={ramLevel}     icon={<MemoryStick size={13} />} />
+          <HBar label="Stockage"    value={stats.storage_used} max={stats.storage_total} unit="Go" level={storageLevel} icon={<HardDrive size={13} />} />
+          <HBar label="Température" value={stats.temperature}  max={100}                 unit="°C" level={tempLevel}    icon={<Thermometer size={13} />} />
+        </motion.div>
+      )}
+
+      {/* Info cards */}
+      {stats && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.13 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-3"
+        >
+          {[
+            { label: "Uptime",      value: stats.uptime },
+            { label: "Load avg",    value: stats.load_avg },
+            { label: "Température", value: `${stats.temperature} °C` },
+            { label: "Mis à jour",  value: stats.timestamp },
+          ].map(({ label, value }) => (
+            <div key={label} className="noc-card border border-border px-4 py-3">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
+              <p className="text-sm font-mono text-foreground truncate">{value}</p>
+            </div>
+          ))}
+        </motion.div>
+      )}
+
+      {/* Légende */}
+      <div className="flex items-center gap-5 text-xs text-muted-foreground font-mono">
+        {[
+          { level: "ok",   label: "Normal < 60%"    },
+          { level: "warn", label: "Attention 60–85%" },
+          { level: "crit", label: "Critique > 85%"  },
+        ].map(({ level, label }) => (
+          <span key={level} className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full" style={{ background: COLORS[level as "ok"].stroke }} />
+            {label}
+          </span>
+        ))}
+      </div>
+
     </div>
   );
 };
