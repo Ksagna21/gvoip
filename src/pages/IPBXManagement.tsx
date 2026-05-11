@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Server, Plus, Pencil, Trash2, Wifi, WifiOff, Search, Terminal, ExternalLink, Navigation } from "lucide-react";
+import { Server, Plus, Pencil, Trash2, Wifi, WifiOff, Search, Terminal, ExternalLink, Navigation, BarChart2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import IPBXStats from "./IPBXStats";
 
 interface IPBX {
   id: string;
@@ -65,7 +66,12 @@ const IPBXManagement = () => {
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [debouncedSearch, setDebouncedSearch] = useState(search);
   const [configuring, setConfiguring] = useState(false);
+  const [selectedIPBX, setSelectedIPBX] = useState<IPBX | null>(null);
 
+  // ── Si un IPBX est sélectionné, afficher la page stats ──────────
+  if (selectedIPBX) {
+    return <IPBXStats ipbx={selectedIPBX} onBack={() => setSelectedIPBX(null)} />;
+  }
 
   const fetchData = async () => {
     setLoading(true);
@@ -199,8 +205,6 @@ const IPBXManagement = () => {
     const user = (i.ssh_user || "root").trim() || "root";
     const q = new URLSearchParams();
     q.set("user", user);
-    // Ne pas passer ssh_password dans l’URL (historique navigateur, journaux, referrers).
-    // Auth SSH : clé sur le serveur GVoIP ou flux dédié sécurisé à prévoir côté backend.
     const qs = q.toString();
     const url = `${window.location.origin}/webssh/ssh/${ip}/${qs ? `?${qs}` : ""}`;
     window.open(url, "_blank", "noopener,noreferrer");
@@ -328,8 +332,13 @@ const IPBXManagement = () => {
           </div>
         ) : (
           ipbxList.map((i) => (
-            <motion.div key={i.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              className="noc-card p-4 border border-border">
+            <motion.div
+              key={i.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="noc-card p-4 border border-border cursor-pointer hover:border-primary/40 transition-colors"
+              onClick={() => setSelectedIPBX(i)}
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-primary/10">
@@ -350,8 +359,18 @@ const IPBXManagement = () => {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  {/* Bouton WebSSH — accessible à tous */}
+                <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                  {/* Bouton Stats */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1 text-xs"
+                    onClick={() => setSelectedIPBX(i)}
+                  >
+                    <BarChart2 size={13} /> Stats
+                  </Button>
+
+                  {/* Bouton WebSSH */}
                   <Button
                     variant="outline"
                     size="sm"
