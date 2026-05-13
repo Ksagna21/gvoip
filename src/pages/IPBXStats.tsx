@@ -72,8 +72,9 @@ function getLevel(pct: number, warn = 60, crit = 85): "ok" | "warn" | "crit" {
   return "ok";
 }
 
+/* Normal = bleu app (primary), aligné sidebar / thème */
 const COLORS = {
-  ok:   { stroke: "#22d3ee", glow: "#22d3ee40", text: "text-cyan-500",  bg: "bg-cyan-500/10"  },
+  ok:   { stroke: "hsl(var(--primary))", glow: "hsl(var(--primary) / 0.22)", text: "text-primary",  bg: "bg-primary/10"  },
   warn: { stroke: "#f59e0b", glow: "#f59e0b40", text: "text-amber-500", bg: "bg-amber-500/10" },
   crit: { stroke: "#ef4444", glow: "#ef444440", text: "text-red-500",   bg: "bg-red-500/10"   },
 };
@@ -113,26 +114,26 @@ function ArcGauge({
 
   return (
     <div
-      className={`flex flex-col items-center rounded-2xl border border-border ${bg} p-4`}
+      className={`flex flex-col items-center rounded-2xl border border-border ${bg} px-4 pt-5 pb-4`}
       style={{ background: `radial-gradient(ellipse at 50% 0%, ${glow} 0%, transparent 70%)` }}
     >
-      <svg width={SIZE} height={SIZE} overflow="visible">
+      <div className="mb-3 flex h-9 w-full items-center justify-center [&>svg]:shrink-0" style={{ color: stroke }}>
+        {icon}
+      </div>
+      <svg width={SIZE} height={SIZE - 8} overflow="visible" className="block">
         <path d={arc(START, START + SWEEP)} fill="none" stroke="hsl(var(--border))" strokeWidth={8} strokeLinecap="round" />
         <path
           d={arc(START, angle)} fill="none" stroke={stroke} strokeWidth={8} strokeLinecap="round"
           style={{ filter: `drop-shadow(0 0 5px ${stroke})`, transition: "all 0.9s cubic-bezier(0.34,1.4,0.64,1)" }}
         />
-        <foreignObject x={cx - 12} y={cy - 30} width={24} height={24}>
-          <div style={{ color: stroke, display: "flex" }}>{icon}</div>
-        </foreignObject>
-        <text x={cx} y={cy + 4} textAnchor="middle" fontSize={22} fontWeight="700" fill={stroke} fontFamily="monospace">
+        <text x={cx} y={cy + 10} textAnchor="middle" fontSize={22} fontWeight="700" fill={stroke} fontFamily="monospace">
           {disp}
         </text>
-        <text x={cx} y={cy + 20} textAnchor="middle" fontSize={11} fill="hsl(var(--muted-foreground))" fontFamily="monospace">
+        <text x={cx} y={cy + 28} textAnchor="middle" fontSize={11} fill="hsl(var(--muted-foreground))" fontFamily="monospace">
           {unit}
         </text>
       </svg>
-      <p className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground mt-1">{label}</p>
+      <p className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground mt-2">{label}</p>
       {sublabel && <p className={`text-[10px] mt-0.5 font-mono ${text}`}>{sublabel}</p>}
     </div>
   );
@@ -171,7 +172,13 @@ function HBar({ label, value, max, unit, level, icon }: {
       <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
         <div
           className="h-full rounded-full"
-          style={{ width: `${disp}%`, background: `linear-gradient(90deg, ${stroke}80, ${stroke})` }}
+          style={{
+            width: `${disp}%`,
+            background:
+              level === "ok"
+                ? "linear-gradient(90deg, hsl(var(--primary) / 0.55), hsl(var(--primary)))"
+                : `linear-gradient(90deg, ${String(stroke).startsWith("#") ? `${stroke}99` : stroke}, ${stroke})`,
+          }}
         />
       </div>
     </div>
@@ -197,22 +204,32 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-/* ─── Stat Card (Appels / Peers) ─────────────────────────────────── */
+/* ─── Stat Card (Appels / Extensions) ────────────────────────────── */
 function StatCard({ label, value, sub, icon, color }: {
   label: string; value: number | string; sub?: string;
   icon: ReactNode; color: string;
 }) {
+  const themePrimary = color === "theme-primary";
   return (
     <div
       className="noc-card border border-border px-4 py-4 flex items-center gap-3"
-      style={{ background: `radial-gradient(ellipse at 0% 50%, ${color}18 0%, transparent 60%)` }}
+      style={
+        themePrimary
+          ? { background: "radial-gradient(ellipse at 0% 50%, hsl(var(--primary) / 0.14) 0%, transparent 60%)" }
+          : { background: `radial-gradient(ellipse at 0% 50%, ${color}18 0%, transparent 60%)` }
+      }
     >
-      <div className="p-2 rounded-xl" style={{ background: `${color}20`, color }}>
+      <div
+        className={themePrimary ? "p-2 rounded-xl bg-primary/20 text-primary" : "p-2 rounded-xl"}
+        style={themePrimary ? undefined : { background: `${color}20`, color }}
+      >
         {icon}
       </div>
       <div>
         <p className="text-xs text-muted-foreground uppercase tracking-wider">{label}</p>
-        <p className="text-xl font-mono font-bold" style={{ color }}>{value}</p>
+        <p className={`text-xl font-mono font-bold ${themePrimary ? "text-primary" : ""}`} style={themePrimary ? undefined : { color }}>
+          {value}
+        </p>
         {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
       </div>
     </div>
@@ -305,7 +322,7 @@ const IPBXStats = ({ ipbx, onBack }: IPBXStatsProps) => {
             onClick={() => setAutoRefresh((v) => !v)}
             className={`text-[11px] px-3 py-1.5 rounded-lg border font-mono transition-all ${
               autoRefresh
-                ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-500 dark:text-cyan-400"
+                ? "border-primary/40 bg-primary/10 text-primary"
                 : "border-border text-muted-foreground hover:border-border/60"
             }`}
           >
@@ -347,7 +364,7 @@ const IPBXStats = ({ ipbx, onBack }: IPBXStatsProps) => {
         </div>
       )}
 
-      {/* ── Cartes Asterisk (appels & peers) ── */}
+      {/* ── Cartes Asterisk (appels & extensions) ── */}
       {stats && (
         <motion.div
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
@@ -358,7 +375,7 @@ const IPBXStats = ({ ipbx, onBack }: IPBXStatsProps) => {
             value={stats.active_calls}
             sub="canaux en cours"
             icon={<PhoneCall size={18} />}
-            color="#22d3ee"
+            color="theme-primary"
           />
           <StatCard
             label="Appels traités"
@@ -368,9 +385,9 @@ const IPBXStats = ({ ipbx, onBack }: IPBXStatsProps) => {
             color="#a78bfa"
           />
           <StatCard
-            label="Peers SIP"
+            label="Extensions"
             value={`${stats.sip_peers_online} / ${stats.sip_peers_total}`}
-            sub="enregistrés / total"
+            sub="enregistrées / total"
             icon={<Users size={18} />}
             color="#34d399"
           />
